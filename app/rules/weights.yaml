@@ -1,0 +1,239 @@
+# Layer 2 device-type weights. Confidence per type is noisy-OR over the matching signals:
+#   P(type) = 1 - prod(1 - w_i)
+# Camera weights are the starting values from PLAN.md; the rest are first guesses.
+# Tune them against your own test devices (see PLAN.md, Testing), never in code.
+#
+# `when` keys (all given keys must match):
+#   name_regex       hostnames, mDNS instance and model strings, UPnP model, web page title
+#   server_regex     Server headers from web, RTSP and SSDP replies
+#   vendor_regex     maker from the MAC prefix or the UPnP description
+#   ports_any        any of these TCP ports open (consented port check)
+#   rtsp             an RTSP video server answered OPTIONS with 200 or 401
+#   onvif_type       ONVIF WS-Discovery reply type
+#   mdns_type_any    advertised mDNS service types
+#   ssdp_regex       SSDP search target or UPnP deviceType
+#   hap_category_any HomeKit accessory category (mDNS _hap._tcp TXT "ci")
+#   dhcp_vendor_regex DHCP option 60 vendor class
+#   gateway          the device is the network's gateway
+#   random_mac       the device uses a private (randomised) MAC address
+#   tuya             a Tuya / Smart Life broadcast was seen
+
+bands:
+  likely: 0.8
+  possible: 0.5
+
+# Other types below this score aren't shown as possible types; they stay in the evidence detail.
+other_type_min: 0.3
+
+types:
+  camera:
+    label: Camera
+    signals:
+      - id: onvif_nvt
+        weight: 0.6
+        when: {onvif_type: NetworkVideoTransmitter}
+        evidence: Answered a camera discovery request (ONVIF video transmitter)
+      - id: rtsp_server
+        weight: 0.5
+        when: {rtsp: true}
+        evidence: Runs a video-streaming server (RTSP)
+      - id: camera_ports
+        weight: 0.3
+        when: {ports_any: [34567, 37777, 8000]}
+        evidence: Has a port open that camera recorders often use
+      - id: camera_vendor
+        weight: 0.3
+        when: {vendor_regex: "hikvision|dahua|xiongmai|uniview|reolink|amcrest|foscam|wyze|ezviz|imou|axis communications|hanwha"}
+        evidence: Made by a company known for cameras
+      - id: camera_name
+        weight: 0.3
+        when: {name_regex: "(?:^|[^a-z])(?:ip)?cam(?:era)?(?:[^a-z]|$)|webcam|(?:^|[^a-z])ipc(?:[^a-z]|$)|(?:^|[^a-z])[nd]vr(?:[^a-z]|$)|doorbell"}
+        evidence: Its name or model mentions a camera
+      - id: homekit_camera
+        weight: 0.6
+        when: {hap_category_any: [17, 18]}
+        evidence: Says it is a HomeKit camera
+      - id: multi_type_vendor
+        weight: 0.1
+        when: {vendor_regex: "tp-link|espressif"}
+        evidence: Made by a company whose chips go into many kinds of device, including cameras
+      - id: tuya_broadcast
+        weight: 0.05
+        when: {tuya: true}
+        evidence: Sends Tuya smart-home broadcasts (some Tuya devices are cameras)
+
+  lock_doorbell:
+    label: Smart lock or doorbell
+    signals:
+      - id: homekit_lock
+        weight: 0.6
+        when: {hap_category_any: [6, 18]}
+        evidence: Says it is a HomeKit lock or doorbell
+      - id: lock_vendor
+        weight: 0.5
+        when: {vendor_regex: "nuki|yale|assa abloy|august home|igloohome|schlage|kwikset|ring llc|level home|ultraloq|u-tec"}
+        evidence: Made by a company known for smart locks or doorbells
+      - id: lock_name
+        weight: 0.5
+        when: {name_regex: "lock|doorbell|nuki|yale|igloo|ring-|ultraloq"}
+        evidence: Its name or model mentions a lock or doorbell
+
+  router:
+    label: Router or Wi-Fi access point
+    signals:
+      - id: is_gateway
+        weight: 0.6
+        when: {gateway: true}
+        evidence: It is this network's gateway (where traffic leaves the network)
+      - id: upnp_igd
+        weight: 0.5
+        when: {ssdp_regex: "InternetGatewayDevice|WANIPConnection|WANPPPConnection"}
+        evidence: Offers internet gateway controls (UPnP)
+      - id: router_vendor
+        weight: 0.3
+        when: {vendor_regex: "netgear|asustek|linksys|ubiquiti|mikrotik|eero|sagemcom|technicolor|arcadyan|sercomm|avm gmbh|zyxel|d-link|tenda|huawei|zte|tp-link"}
+        evidence: Made by a company that makes routers
+      - id: router_name
+        weight: 0.3
+        when: {name_regex: "router|gateway|deco|orbi|eero|mesh|access ?point|archer"}
+        evidence: Its name or model mentions a router
+
+  hub:
+    label: Smart-home hub
+    signals:
+      - id: hue_bridge
+        weight: 0.6
+        when: {mdns_type_any: [_hue._tcp]}
+        evidence: Advertises itself as a Philips Hue bridge
+      - id: homekit_bridge
+        weight: 0.6
+        when: {hap_category_any: [2]}
+        evidence: Says it is a HomeKit bridge
+      - id: hub_vendor
+        weight: 0.4
+        when: {vendor_regex: "signify|philips lighting|smartthings|samjin|lumi united|aqara|athom|hubitat|homey"}
+        evidence: Made by a company that makes smart-home hubs
+      - id: hub_name
+        weight: 0.4
+        when: {name_regex: "hub|bridge|smartthings|homey|zigbee|home ?assistant"}
+        evidence: Its name or model mentions a hub
+      - id: mqtt
+        weight: 0.2
+        when: {ports_any: [1883, 8883]}
+        evidence: Runs a smart-home messaging service (MQTT)
+
+  speaker:
+    label: Smart speaker
+    signals:
+      - id: sonos_service
+        weight: 0.6
+        when: {mdns_type_any: [_sonos._tcp]}
+        evidence: Advertises itself as a Sonos speaker
+      - id: homekit_speaker
+        weight: 0.5
+        when: {hap_category_any: [26]}
+        evidence: Says it is a HomeKit speaker
+      - id: speaker_vendor
+        weight: 0.4
+        when: {vendor_regex: "sonos|bose|harman|bang & olufsen|sound united|denon|bluesound|libratone"}
+        evidence: Made by a company that makes speakers
+      - id: speaker_name
+        weight: 0.4
+        when: {name_regex: "sonos|speaker|homepod|echo|nest ?(?:mini|audio)|soundbar|audioaccessory"}
+        evidence: Its name or model mentions a speaker
+      - id: spotify_connect
+        weight: 0.3
+        when: {mdns_type_any: [_spotify-connect._tcp]}
+        evidence: Can play Spotify music sent from a phone
+      - id: airplay_audio
+        weight: 0.2
+        when: {mdns_type_any: [_raop._tcp]}
+        evidence: Can receive AirPlay audio
+
+  tv:
+    label: TV or streaming stick
+    signals:
+      - id: android_tv
+        weight: 0.6
+        when: {mdns_type_any: [_androidtvremote2._tcp, _androidtvremote._tcp]}
+        evidence: Accepts Android TV remote control
+      - id: homekit_tv
+        weight: 0.5
+        when: {hap_category_any: [31]}
+        evidence: Says it is a HomeKit TV
+      - id: dial
+        weight: 0.4
+        when: {ssdp_regex: "dial-multiscreen"}
+        evidence: Can launch apps sent from a phone (DIAL)
+      - id: tv_name
+        weight: 0.4
+        when: {name_regex: "(?:^|[^a-z])tv(?:[^a-z]|$)|bravia|roku|chromecast|fire ?tv|apple ?tv|webos|tizen|appletv"}
+        evidence: Its name or model mentions a TV
+      - id: tv_vendor
+        weight: 0.3
+        when: {vendor_regex: "lg electronics|sony|tcl|hisense|roku|vizio|sharp|philips|panasonic"}
+        evidence: Made by a company that makes TVs
+      - id: googlecast
+        weight: 0.3
+        when: {mdns_type_any: [_googlecast._tcp]}
+        evidence: Can play video sent from a phone (Google Cast)
+      - id: media_renderer
+        weight: 0.2
+        when: {ssdp_regex: "MediaRenderer"}
+        evidence: Can play media sent from other devices (UPnP)
+
+  smart_plug:
+    label: Smart plug or switch
+    signals:
+      - id: homekit_plug
+        weight: 0.6
+        when: {hap_category_any: [7, 8]}
+        evidence: Says it is a HomeKit outlet or switch
+      - id: plug_name
+        weight: 0.5
+        when: {name_regex: "plug|socket|outlet|kasa|tapo|shelly|meross|wemo|sonoff|switch"}
+        evidence: Its name or model mentions a plug or switch
+      - id: tuya_plug
+        weight: 0.3
+        when: {tuya: true}
+        evidence: Sends Tuya smart-home broadcasts (common in smart plugs)
+      - id: tuya_local
+        weight: 0.3
+        when: {ports_any: [6668]}
+        evidence: Has the Tuya local-control port open
+      - id: espressif
+        weight: 0.2
+        when: {vendor_regex: "espressif"}
+        evidence: Uses a Wi-Fi chip common in smart plugs
+
+  computer_phone:
+    label: Computer or phone
+    signals:
+      - id: private_mac
+        weight: 0.4
+        when: {random_mac: true}
+        evidence: Uses a private address, which phones and laptops do by default
+      - id: computer_name
+        weight: 0.5
+        when: {name_regex: "macbook|imac|mac ?mini|iphone|ipad|android|galaxy|pixel|laptop|desktop|thinkpad|surface|(?:^|[^a-z])pc(?:[^a-z]|$)"}
+        evidence: Its name mentions a computer or phone
+      - id: screen_sharing
+        weight: 0.4
+        when: {mdns_type_any: [_rfb._tcp]}
+        evidence: Offers screen sharing
+      - id: file_sharing
+        weight: 0.4
+        when: {mdns_type_any: [_smb._tcp, _afpovertcp._tcp, _sftp-ssh._tcp]}
+        evidence: Offers file sharing
+      - id: apple_companion
+        weight: 0.3
+        when: {mdns_type_any: [_companion-link._tcp]}
+        evidence: Advertises Apple device-to-device features
+      - id: dhcp_os
+        weight: 0.4
+        when: {dhcp_vendor_regex: "msft|android-dhcp"}
+        evidence: Asked for an address the way Windows or Android does
+      - id: computer_vendor
+        weight: 0.3
+        when: {vendor_regex: "intel corporate|dell|lenovo|hewlett packard|microsoft|liteon|azurewave|hon hai|apple"}
+        evidence: Made by a company that makes computers or phones

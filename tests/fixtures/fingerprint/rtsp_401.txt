@@ -1,0 +1,5 @@
+RTSP/1.0 401 Unauthorized
+CSeq: 1
+WWW-Authenticate: Digest realm="IP Camera(C1234)", nonce="abc"
+Server: Hikvision-Webs
+

@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0">
+  <specVersion><major>1</major><minor>0</minor></specVersion>
+  <device>
+    <deviceType>urn:schemas-upnp-org:device:InternetGatewayDevice:1</deviceType>
+    <friendlyName>Deco X20</friendlyName>
+    <manufacturer>TP-Link</manufacturer>
+    <modelName>Deco X20</modelName>
+    <deviceList><device><deviceType>urn:schemas-upnp-org:device:WANDevice:1</deviceType>
+      <manufacturer>Nested should be ignored</manufacturer></device></deviceList>
+  </device>
+</root>

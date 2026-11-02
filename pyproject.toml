@@ -1,0 +1,49 @@
+[project]
+name = "roomcheck"
+version = "0.1.0"
+description = "A digital move-in inspection: find out what's watching or controlling your room."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "scapy>=2.6",
+    "psutil>=6.0",
+    "zeroconf>=0.136",
+    "defusedxml>=0.7",
+    "pydantic>=2.9",
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "httpx>=0.28.1",
+    "python-nmap>=0.7.1",
+    "pyyaml>=6.0.3",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.8",
+    "mypy>=1.13",
+    "httpx>=0.27",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S"]
+# S104 flags "0.0.0.0" string comparisons; the server only binds 127.0.0.1.
+ignore = ["S101", "S104"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
+
+[tool.mypy]
+python_version = "3.12"
+ignore_missing_imports = true

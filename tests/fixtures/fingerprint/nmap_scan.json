@@ -1,0 +1,11 @@
+{
+  "nmap": {"command_line": "nmap -oX - ...", "scaninfo": {"tcp": {"method": "connect"}}},
+  "scan": {
+    "192.168.68.1": {"status": {"state": "up"}, "tcp": {
+      "80": {"state": "open"}, "443": {"state": "open"}, "23": {"state": "closed"}}},
+    "192.168.68.64": {"status": {"state": "up"}, "tcp": {
+      "80": {"state": "open"}, "554": {"state": "open"}, "8000": {"state": "open"},
+      "8554": {"state": "filtered"}, "9999": {"state": "open"}}},
+    "192.168.68.53": {"status": {"state": "up"}}
+  }
+}

