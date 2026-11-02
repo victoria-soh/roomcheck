@@ -1,0 +1,9 @@
+
+Il existe 1 interface sur le système :
+
+    Nom                    : Wi-Fi
+    Description            : Intel(R) Wi-Fi 6E AX211 160MHz
+    État                   : connecté
+    SSID                   : MaisonNet
+    Authentification       : WPA2 - Personnel
+    Chiffrement            : CCMP

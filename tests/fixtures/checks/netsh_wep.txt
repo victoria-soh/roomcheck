@@ -1,0 +1,8 @@
+
+There is 1 interface on the system:
+
+    Name                   : Wi-Fi
+    State                  : connected
+    SSID                   : OldRouter
+    Authentication         : Shared
+    Cipher                 : WEP

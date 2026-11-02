@@ -1,0 +1,123 @@
+# Layer 3 rules, judged by app/rules/engine.py (pure functions, no I/O).
+#
+# Each rule:
+#   id              rule ID from PLAN.md
+#   scope           device (one finding per matching device) or network (at most one finding)
+#   when            exactly one named predicate from engine.PREDICATES, with its arguments
+#   severity        a severity, or a map from the predicate's variant to a severity
+#   title / next_step  text, or a map by variant
+#   guidance        extra steps shown under the next step
+#   evidence_fields device facts added after the predicate's own evidence
+#
+# Severities and next steps follow PLAN.md. Wording never tells the user a device or room is fine;
+# a test checks this file for reassuring words.
+
+cant_see:
+  - Cameras that join a hidden or separate network as ordinary clients, or that only record to a memory card and send nothing.
+  - Devices on this network that stayed silent for the whole scan.
+  - Who owns the account a cloud-linked device is paired to.
+  - A device's exact firmware version. That would need logging in to it, which RoomCheck never does.
+
+not_yet_checked:
+  - "Nearby Wi-Fi networks, lookalike networks, camera setup hotspots, WPS and Bluetooth trackers: not part of this version yet."
+
+rules:
+  - id: R-CAM
+    scope: device
+    when: {type_score: {type: camera, min: 0.5}}
+    severity: {Likely: High, Possible: Medium}
+    title: {Likely: Likely camera, Possible: Possible camera}
+    next_step: >-
+      Find it physically. Ask the host or landlord where it is and who can view it.
+      In a short stay, check the platform's camera disclosure rules.
+    guidance:
+      - "If you find a hidden camera, don't destroy or unplug it yet. Photograph it where it is."
+      - Leave the space if you feel unsafe.
+      - >-
+        Report it to the booking platform and the police. Secret recording in private spaces
+        is a criminal offence in Singapore and many other countries.
+    evidence_fields: [maker, address, open_ports, notes, identification]
+
+  - id: R-LOCK
+    scope: device
+    when: {type_score: {type: lock_doorbell, min: 0.5}}
+    severity: High
+    title: Smart lock or doorbell
+    next_step: >-
+      Ask the landlord to remove previous users and codes in the lock's app, and confirm in
+      writing.
+    evidence_fields: [maker, address, identification]
+
+  - id: R-CLOUD
+    scope: device
+    when: {cloud_link: {types: [smart_plug, hub], min: 0.5}}
+    severity: Medium
+    title: Cloud-linked smart device
+    next_step: >-
+      Ask who controls the account. A long-term tenant can ask to factory-reset it and pair it
+      to their own account.
+    evidence_fields: [maker, address]
+
+  - id: R-TELNET
+    scope: device
+    when: {open_port: {port: 23, service: Telnet}}
+    severity: High
+    title: Device offers Telnet
+    next_step: >-
+      Don't use that device. Report it to the landlord. Telnet sends logins unencrypted and is
+      a common IoT weakness.
+    evidence_fields: [maker, address, open_ports]
+
+  - id: R-WIFI-ENC
+    scope: network
+    when: {wifi_weak: {}}
+    severity: High
+    title: Wi-Fi without proper encryption
+    next_step: Assume traffic can be read. Use a VPN or mobile data until the landlord fixes it.
+
+  - id: R-UPNP
+    scope: network
+    when: {upnp_igd: {}}
+    severity: Medium
+    title: Router lets devices open internet ports (UPnP)
+    next_step: >-
+      Devices can open ports to the internet without asking. Ask for UPnP to be disabled.
+
+  - id: R-DNS
+    scope: network
+    when: {dns_tampered: {}}
+    severity: High
+    title: Web address lookups look tampered with
+    next_step: Don't log in to anything important on this network. Tell the landlord.
+
+  - id: R-ARP
+    scope: network
+    when: {gateway_claimed_twice: {}}
+    severity: {different_makers: High, same_maker_flip_flop: High, same_maker: Medium}
+    title:
+      different_makers: More than one device answers for the router
+      same_maker_flip_flop: The device answering for the router keeps switching
+      same_maker: Two devices from the router's maker answer for the router
+    next_step:
+      different_makers: Possible interception. Disconnect and use mobile data.
+      same_maker_flip_flop: Possible interception. Disconnect and use mobile data.
+      same_maker: >-
+        A mesh system or a router with two network ports can cause this, so ask the landlord
+        before assuming the worst. Until you know, avoid logging in to anything important.
+
+  - id: R-DHCP
+    scope: network
+    when: {dhcp_servers: {min: 2}}
+    severity: High
+    title: More than one device hands out network addresses
+    next_step: Possible rogue router. Report it to the landlord.
+
+  - id: R-CVE
+    scope: device
+    when: {known_issues: {}}
+    severity: {exploited: Medium, reported: Info}
+    title: Known issues reported for this model
+    next_step: >-
+      Known issues have been reported for this model. The exact firmware version can't be
+      confirmed without logging in, so ask the landlord whether it has been updated recently.
+    evidence_fields: [maker, address]

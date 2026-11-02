@@ -70,7 +70,7 @@ def test_job_errors_map_to_codes():
 
 
 def test_default_jobs_are_only_the_allowlisted_jobs():
-    assert set(default_jobs()) == {"arp_sweep", "passive_listen", "port_scan"}
+    assert set(default_jobs()) == {"arp_sweep", "passive_listen", "port_scan", "dhcp_probe"}
     arp = default_jobs()["arp_sweep"].params
     with pytest.raises(ValueError):
         arp.model_validate({"cidr": "10.0.0.0/8"})

@@ -7,7 +7,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.checks.models import NetworkFacts
 from app.fingerprint.models import Fingerprint, Identity
+from app.rules.models import Finding, RoomSummary
 
 Source = Literal["arp_sweep", "arp_passive", "dhcp", "mdns", "ssdp", "onvif", "tuya"]
 
@@ -82,3 +84,6 @@ class DiscoveryResult(BaseModel):
     client_isolation: bool = False
     messages: list[str] = Field(default_factory=list)
     observations: list[Observation] = Field(default_factory=list)
+    network_facts: NetworkFacts | None = None  # Layer 3
+    findings: list[Finding] = Field(default_factory=list)  # rules engine
+    summary: RoomSummary | None = None  # rules engine

@@ -54,6 +54,7 @@ def test_weights_file_has_plan_camera_weights():
     assert cam["camera_vendor"] == 0.3
     assert cam["camera_name"] == 0.3
     assert cam["multi_type_vendor"] == 0.1
+    assert cam["chip_vendor"] == 0.1
     assert cam["tuya_broadcast"] == 0.05
     assert set(w.types) == {
         "camera",
@@ -165,3 +166,17 @@ def test_strong_other_types_are_shown():
     f = fp(d)
     assert f.type == "camera"
     assert [t.type for t in f.other_types] == ["router"]
+
+
+def test_vendor_wording_devices_versus_chips():
+    tp = fp(dev.tp_link_gateway())
+    [cam] = [t for t in tp.weak_types if t.type == "camera"]
+    assert cam.evidence[0].text.startswith(
+        "Made by a company that makes many kinds of device, including cameras"
+    )
+    assert "chip" not in cam.evidence[0].text
+
+    esp = fp(dev.make("192.168.68.95", "00:4b:12:00:00:01"))  # Espressif Inc. prefix
+    cam_esp = next(t for t in [esp, *esp.other_types, *esp.weak_types] if t.type == "camera")
+    texts = [e.text for e in (cam_esp.evidence)]
+    assert any(t.startswith("Uses a Wi-Fi chip from a company whose chips") for t in texts)

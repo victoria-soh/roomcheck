@@ -30,6 +30,7 @@ class Job:
 
 def default_jobs() -> dict[str, Job]:
     from scannerd.jobs.arp import ArpSweepParams, arp_sweep
+    from scannerd.jobs.dhcp import DhcpProbeParams, dhcp_probe
     from scannerd.jobs.listeners import PassiveListenParams, passive_listen
     from scannerd.jobs.ports import PortScanParams, port_scan
 
@@ -37,6 +38,7 @@ def default_jobs() -> dict[str, Job]:
         "arp_sweep": Job(ArpSweepParams, arp_sweep),
         "passive_listen": Job(PassiveListenParams, passive_listen),
         "port_scan": Job(PortScanParams, port_scan),
+        "dhcp_probe": Job(DhcpProbeParams, dhcp_probe),
     }
 
 

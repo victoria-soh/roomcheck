@@ -1,7 +1,7 @@
 # RoomCheck
 Read PLAN.md for the full design. Build one layer at a time; don't start the next until I confirm.
 - Windows 11 native (not WSL). Python 3.12+, FastAPI, React + Vite + TypeScript.
-- Fixed rules decide every verdict. AI only explains and never changes severity or says "safe".
+- Fixed rules decide every verdict. AI only explains and never changes severity. Nothing in RoomCheck ever says 'safe'.
 - Never log in to devices, try passwords, decrypt traffic, or scan networks without the consent gate.
 - Subprocess calls use argument lists, never shell=True. Bind the server to 127.0.0.1 only.
 - Every new feature gets pytest tests. Run them before saying a step is done.

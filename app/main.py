@@ -40,6 +40,8 @@ class DiscoveryRequest(BaseModel):
     # True only when the user says this is their network or they have permission to test it.
     consent: bool = False
     duration_seconds: int = Field(default=60, ge=10, le=120)
+    # Allow the optional NVD lookup (product names only). False keeps everything offline.
+    online: bool = True
 
 
 @app.get("/api/health")
@@ -50,4 +52,4 @@ def health(request: Request) -> dict[str, bool]:
 @app.post("/api/discovery")
 def discovery(body: DiscoveryRequest, request: Request) -> DiscoveryResult:
     scanner = getattr(request.app.state, "scanner", None)
-    return run_scan(body.consent, scanner, body.duration_seconds)
+    return run_scan(body.consent, scanner, body.duration_seconds, online=body.online)

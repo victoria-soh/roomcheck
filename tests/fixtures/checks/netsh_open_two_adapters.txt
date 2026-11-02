@@ -1,0 +1,29 @@
+
+There are 2 interfaces on the system:
+
+    Name                   : Wi-Fi 2
+    Description            : Realtek USB Wireless LAN
+    GUID                   : 11111111-2222-3333-4444-555555555555
+    Physical address       : 00:e0:4c:00:00:01
+    Interface type         : Primary
+    State                  : disconnected
+    Radio status           : Hardware On
+                             Software On
+
+    Name                   : Wi-Fi
+    Description            : Intel(R) Wi-Fi 6E AX211 160MHz
+    GUID                   : 9e129787-2fb7-4e2a-bf3c-3e87dc3713b7
+    Physical address       : c4:0f:08:11:22:33
+    Interface type         : Primary
+    State                  : connected
+    SSID                   : Hotel Guest
+    AP BSSID               : 00:11:22:33:44:55
+    Network type           : Infrastructure
+    Radio type             : 802.11n
+    Authentication         : Open
+    Cipher                 : None
+    Connection mode        : Auto Connect
+    Signal                 : 70%
+    Profile                : Hotel Guest
+
+    Hosted network status  : Not available

@@ -31,6 +31,21 @@ MESSAGES: dict[str, str] = {
         "Partly identified: some devices didn't answer in time or sent replies we couldn't "
         "read. They were judged on what we could see."
     ),
+    "not_wifi": (
+        "Not run: you're not connected over Wi-Fi, so there's no Wi-Fi encryption to check."
+    ),
+    "wifi_unreadable": (
+        "Couldn't read your Wi-Fi connection details. This check may not support this Windows "
+        "language yet."
+    ),
+    "dns_unclear": (
+        "The network's address lookups didn't answer clearly, so this check couldn't decide."
+    ),
+    "no_listener": "Not run: the network listener didn't run, so there was no traffic to check.",
+    "no_dhcp_offer": "No device answered the address request, so this couldn't be checked.",
+    "offline": "Skipped because you chose not to look anything up online.",
+    "no_models": "No device shared a model name we could look up.",
+    "nvd_unavailable": "Vulnerability lookup skipped for now.",
     "timeout": "This step took too long and was stopped. The other steps still ran.",
     "internal": "Something went wrong in this step. The other steps still ran.",
 }

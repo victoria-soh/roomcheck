@@ -16,7 +16,8 @@ def fake_result(mode):
 def make_client(monkeypatch):
     seen = {}
 
-    def fake_run(consent, scanner, duration_seconds):
+    def fake_run(consent, scanner, duration_seconds, online=True):
+        seen["online"] = online
         mode = "full" if consent else "passive"
         seen["mode"] = mode
         return fake_result(mode)

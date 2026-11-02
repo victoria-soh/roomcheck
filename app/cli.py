@@ -40,7 +40,35 @@ def _print_device(d: Device, details: bool) -> None:
     print(f"    found by: {', '.join(d.sources)}{'  ' + ' '.join(tags) if tags else ''}")
 
 
+def _print_summary(result: DiscoveryResult) -> None:
+    s = result.summary
+    if s is None:
+        return
+    icon = {"Needs attention": "[!!]", "Check these items": "[!]"}.get(s.status, "[i]")
+    print()
+    print(f"{icon} {s.status}  ({s.high} high, {s.medium} medium, {s.other} other)")
+    for f in result.findings:
+        print()
+        print(f"  {f.severity.upper()} - {f.title}  [{f.rule_id}, {f.confidence_band}]")
+        for e in f.evidence:
+            print(f"      - {e}")
+        print(f"    Next step: {f.next_step}")
+        for g in f.guidance:
+            print(f"      * {g}")
+    if s.not_checked:
+        print()
+        print("  Not checked this time:")
+        for item in s.not_checked:
+            print(f"    - {item}")
+    print()
+    print("  What this scan can't see:")
+    for item in s.cant_see:
+        print(f"    - {item}")
+
+
 def print_result(result: DiscoveryResult, details: bool = False) -> None:
+    _print_summary(result)
+    print()
     net = result.network
     if net:
         print(f"Network {net.cidr} via {net.interface}, gateway {net.gateway_ip}")
@@ -70,6 +98,9 @@ def main(argv: list[str] | None = None) -> int:
     disc.add_argument("--duration", type=int, default=DEFAULT_DURATION_SECONDS)
     disc.add_argument("--json", action="store_true", help="print the full result as JSON")
     disc.add_argument(
+        "--offline", action="store_true", help="don't look up known issues online (NVD)"
+    )
+    disc.add_argument(
         "--details", action="store_true", help="also show weak hints below the display threshold"
     )
     args = parser.parse_args(argv)
@@ -83,7 +114,7 @@ def main(argv: list[str] | None = None) -> int:
     except ScannerError:
         scanner = None
     try:
-        result = run_scan(args.consent, scanner, args.duration)
+        result = run_scan(args.consent, scanner, args.duration, online=not args.offline)
     finally:
         proc.stop()
 

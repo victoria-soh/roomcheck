@@ -55,8 +55,12 @@ types:
         evidence: Says it is a HomeKit camera
       - id: multi_type_vendor
         weight: 0.1
-        when: {vendor_regex: "tp-link|espressif"}
-        evidence: Made by a company whose chips go into many kinds of device, including cameras
+        when: {vendor_regex: "tp-link"}
+        evidence: Made by a company that makes many kinds of device, including cameras
+      - id: chip_vendor
+        weight: 0.1
+        when: {vendor_regex: "espressif"}
+        evidence: Uses a Wi-Fi chip from a company whose chips go into many kinds of device, including cameras
       - id: tuya_broadcast
         weight: 0.05
         when: {tuya: true}
