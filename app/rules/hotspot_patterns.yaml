@@ -1,0 +1,86 @@
+# R-CAMHOT hints: network names that cameras use for their own setup hotspot, and camera-focused
+# makers recognised from the access point's address (BSSID prefix).
+#
+# Names are easy to change, so a match is a hint, never proof. This is a starting set built from
+# common setup-hotspot naming; confirm each pattern against your own test devices or the maker's
+# setup manual before relying on it (PLAN.md, Testing), and add what you find.
+#
+# Each pattern:
+#   id        short name
+#   regex     Python regex, searched case-insensitively in the network name
+#   label     shown to the user as evidence ("matches ...")
+#   examples  names that must match (checked by tests)
+# `must_not_match` lists ordinary names that no pattern may match (also checked by tests).
+
+# Searched in the IEEE registration name; word boundaries matter ("ring llc" must not match
+# "Align Engineering LLC"). A test runs this over the whole bundled OUI list.
+camera_vendor_regex: '\b(?:hikvision|dahua|xiongmai|uniview|reolink|amcrest|foscam|wyze|ezviz|imou|axis communications|hanwha (?:vision|techwin)|ring llc|immedia semiconductor|arlo technology|gopro)\b'
+
+patterns:
+  - id: camera_word
+    regex: '(?:^|[^a-z])(?:ip)?cam(?:era)?s?(?:[^a-z]|$)|(?:wifi|ip|web|hd|mini|spy|smart|dash|baby|pet|door)cam'
+    label: the name mentions a camera
+    examples: [IPCAM-7F3A21, HD Camera_01, WiFiCam-5521, Cam_8812, SmartCam-A1, BabyCam]
+
+  - id: recorder_prefix
+    regex: '(?:^|[^a-z])(?:ipc|nvr|dvr)(?:[^a-z]|$)'
+    label: the name uses a camera or video-recorder prefix (IPC, NVR or DVR)
+    examples: [IPC_3A9F01, NVR-0012, DVR_HOME]
+
+  - id: doorbell
+    regex: 'doorbell'
+    label: the name mentions a doorbell
+    examples: [Doorbell-AP, VideoDoorbell_12]
+
+  - id: ring_setup
+    regex: '^ring-[0-9a-f]{6}$'
+    label: the setup-network format of Ring doorbells and cameras
+    examples: [Ring-1A2B3C]
+
+  - id: ezviz_setup
+    regex: '^ezviz[_-]'
+    label: the setup-network format of EZVIZ cameras
+    examples: [EZVIZ_C12345678]
+
+  - id: v380_setup
+    regex: '^mv\d{6,}$'
+    label: the setup-hotspot format of cameras run through the V380 app
+    examples: [MV12345678]
+
+  - id: p2p_uid
+    regex: '^[a-z]{3,5}-\d{6}-[a-z]{5}$'
+    label: the device-ID format that many cheap mini cameras use as their hotspot name
+    examples: [DGOA-123456-ABCDE, BHCC-654321-FGHIJ]
+
+  - id: xiaomi_camera
+    regex: '^(?:chuangmi|isa|mijia|xiaomi)-camera'
+    label: the setup-network format of Xiaomi cameras
+    examples: [chuangmi-camera-ipc019_miap1a2b]
+
+  - id: blink_setup
+    regex: '^blink-[0-9a-z]{4}$'
+    label: the setup-network format of Blink camera sync modules
+    examples: [BLINK-A1B2]
+
+  - id: action_camera
+    regex: '^gp\d{8}$|gopro'
+    label: the Wi-Fi of an action camera (GoPro)
+    examples: [GP24681357, GoPro Hero12]
+
+must_not_match:
+  - HomeNet
+  - Campus-WiFi
+  - Cambridge Guest
+  - Cameron's iPhone
+  - Camden_5G
+  - Scampi Bar
+  - DIRECT-7A-HP OfficeJet
+  - AndroidAP_1234
+  - SINGTEL-ABCD
+  - IPCorp-Guest
+  - Ringo
+  - MyRing-Home
+  - Mv-Guest
+  - Starbucks
+  - eero
+  - Galaxy A54 5G

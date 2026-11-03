@@ -1,0 +1,3 @@
+# Hidden network that keeps the name length but blanks it with zero bytes.
+00 07 00 00 00 00 00 00 00
+30 14 01 00 00 0f ac 04 01 00 00 0f ac 04 01 00 00 0f ac 02 00 00

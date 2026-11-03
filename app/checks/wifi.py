@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 
 from app.checks.models import WifiStatus
+from app.discovery.netinfo import normalize_mac
 
 NETSH_TIMEOUT_SECONDS = 10
 
@@ -36,6 +37,34 @@ def parse_netsh_interfaces(text: str) -> list[dict[str, str]]:
     return blocks
 
 
+def _bssid(block: dict[str, str]) -> str | None:
+    raw = block.get("ap bssid") or block.get("bssid")
+    if not raw:
+        return None
+    try:
+        return normalize_mac(raw)
+    except ValueError:
+        return None
+
+
+def _status(b: dict[str, str]) -> WifiStatus:
+    return WifiStatus(
+        interface=b["name"],
+        ssid=b.get("ssid") or None,
+        bssid=_bssid(b),
+        authentication=b["authentication"],
+        cipher=b["cipher"],
+    )
+
+
+def first_connected(text: str) -> WifiStatus | None:
+    """The first connected Wi-Fi interface, for a nearby-only check with no network info."""
+    for b in parse_netsh_interfaces(text):
+        if b.get("state", "").lower() == "connected" and "authentication" in b and "cipher" in b:
+            return _status(b)
+    return None
+
+
 def status_for_interface(text: str, interface: str) -> WifiStatus | None:
     """The connected Wi-Fi interface matching `interface`, or None if it isn't Wi-Fi."""
     blocks = parse_netsh_interfaces(text)
@@ -46,12 +75,7 @@ def status_for_interface(text: str, interface: str) -> WifiStatus | None:
             return None
         if "authentication" not in b or "cipher" not in b:
             raise WifiCheckError("unreadable")
-        return WifiStatus(
-            interface=b["name"],
-            ssid=b.get("ssid") or None,
-            authentication=b["authentication"],
-            cipher=b["cipher"],
-        )
+        return _status(b)
     if not blocks and sum(" : " in line for line in text.splitlines()) >= 3:
         raise WifiCheckError("unreadable")  # label/value lines, but no "Name": translated labels
     return None
@@ -62,7 +86,7 @@ def _netsh_path() -> Path:
     return Path(os.environ.get("SystemRoot", r"C:\Windows")) / "System32" / "netsh.exe"
 
 
-def current_wifi(interface: str) -> WifiStatus | None:
+def _show_interfaces() -> str:
     netsh = _netsh_path()
     if not netsh.exists():
         raise WifiCheckError("no_wlan")
@@ -79,7 +103,19 @@ def current_wifi(interface: str) -> WifiStatus | None:
         raise WifiCheckError("no_wlan") from e
     if proc.returncode != 0:
         raise WifiCheckError("no_wlan")  # e.g. the WLAN service isn't running
-    return status_for_interface(proc.stdout, interface)
+    return proc.stdout
+
+
+def current_wifi(interface: str) -> WifiStatus | None:
+    return status_for_interface(_show_interfaces(), interface)
+
+
+def connected_wifi() -> WifiStatus | None:
+    """Whatever Wi-Fi the laptop is connected to, or None. Never raises."""
+    try:
+        return first_connected(_show_interfaces())
+    except WifiCheckError:
+        return None
 
 
 def is_weak(status: WifiStatus) -> bool:

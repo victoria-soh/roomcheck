@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -22,6 +23,18 @@ class Finding(BaseModel):
     evidence: list[str]
     next_step: str
     guidance: list[str] = Field(default_factory=list)
+    nearby_ref: str | None = None  # a flagged nearby item's ref, for the locator
+
+
+@dataclass
+class Match:
+    """What a rule predicate found: confidence, evidence, and which variant of the rule."""
+
+    band: Band
+    evidence: list[str]
+    variant: str | None = None
+    device_ref: str | None = None  # network rules may point at the device involved
+    nearby_ref: str | None = None  # nearby rules point at the flagged access point or device
 
 
 class RoomSummary(BaseModel):

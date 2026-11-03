@@ -28,7 +28,11 @@ def netsh(name: str) -> str:
 def test_wpa2_connection_is_read_and_not_weak():
     s = wifi.status_for_interface(netsh("netsh_wpa2.txt"), "Wi-Fi")
     assert s == WifiStatus(
-        interface="Wi-Fi", ssid="HomeNet", authentication="WPA2-Personal", cipher="CCMP"
+        interface="Wi-Fi",
+        ssid="HomeNet",
+        bssid="cc:ba:bd:ac:94:d9",
+        authentication="WPA2-Personal",
+        cipher="CCMP",
     )
     assert not wifi.is_weak(s)
 

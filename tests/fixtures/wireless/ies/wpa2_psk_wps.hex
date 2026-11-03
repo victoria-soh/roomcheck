@@ -1,0 +1,12 @@
+# Beacon IEs: "HomeNet", WPA2-Personal (PSK, CCMP), WPS configured.
+00 07 48 6f 6d 65 4e 65 74                    # SSID "HomeNet"
+01 08 82 84 8b 96 0c 12 18 24                 # supported rates (ignored)
+03 01 06                                      # DS parameter set: channel 6 (ignored)
+30 14 01 00                                   # RSN, length 20, version 1
+      00 0f ac 04                             #   group cipher CCMP
+      01 00 00 0f ac 04                       #   1 pairwise: CCMP
+      01 00 00 0f ac 02                       #   1 AKM: PSK
+      0c 00                                   #   RSN capabilities
+dd 0e 00 50 f2 04                             # Microsoft vendor element, type 4 (WPS)
+      10 4a 00 01 10                          #   version 1.0
+      10 44 00 01 02                          #   WPS state: configured

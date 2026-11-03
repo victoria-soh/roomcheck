@@ -12,6 +12,7 @@ class WifiStatus(BaseModel):
 
     interface: str
     ssid: str | None = None
+    bssid: str | None = None  # the access point you're connected to; used by Layer 4 only
     authentication: str
     cipher: str
 

@@ -1,0 +1,10 @@
+# A camera's own hotspot: WPS says "camera", PIN methods listed, AP setup locked.
+00 0c 49 50 43 41 4d 2d 37 46 33 41 32 31    # SSID "IPCAM-7F3A21"
+30 14 01 00 00 0f ac 04 01 00 00 0f ac 04 01 00 00 0f ac 02 00 00
+dd 2d 00 50 f2 04
+      10 4a 00 01 10                          #   version
+      10 44 00 01 02                          #   configured
+      10 57 00 01 01                          #   AP setup locked
+      10 08 00 02 00 8c                       #   config methods: label, display, push button
+      10 21 00 04 41 63 6d 65                 #   manufacturer "Acme"
+      10 54 00 08 00 04 00 50 f2 04 00 04     #   primary device type: category 4 (camera)

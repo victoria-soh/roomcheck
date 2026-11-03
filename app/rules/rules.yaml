@@ -1,8 +1,9 @@
-# Layer 3 rules, judged by app/rules/engine.py (pure functions, no I/O).
+# Layer 3 and Layer 4 rules, judged by app/rules/engine.py (pure functions, no I/O).
 #
 # Each rule:
 #   id              rule ID from PLAN.md
-#   scope           device (one finding per matching device) or network (at most one finding)
+#   scope           device (one finding per matching device), network (at most one finding),
+#                   or nearby (Layer 4: one finding per flagged access point or Bluetooth device)
 #   when            exactly one named predicate from engine.PREDICATES, with its arguments
 #   severity        a severity, or a map from the predicate's variant to a severity
 #   title / next_step  text, or a map by variant
@@ -17,9 +18,10 @@ cant_see:
   - Devices on this network that stayed silent for the whole scan.
   - Who owns the account a cloud-linked device is paired to.
   - A device's exact firmware version. That would need logging in to it, which RoomCheck never does.
+  - Cameras that join the host's network as ordinary clients broadcast nothing the nearby check can hear.
+  - Network names, makers and tracker formats are hints, not proof. The locator gives a rough area, not an exact spot.
 
-not_yet_checked:
-  - "Nearby Wi-Fi networks, lookalike networks, camera setup hotspots, WPS and Bluetooth trackers: not part of this version yet."
+not_yet_checked: []
 
 rules:
   - id: R-CAM
@@ -121,3 +123,72 @@ rules:
       Known issues have been reported for this model. The exact firmware version can't be
       confirmed without logging in, so ask the landlord whether it has been updated recently.
     evidence_fields: [maker, address]
+
+  # --- Layer 4: nearby Wi-Fi and Bluetooth (only public broadcasts; nothing is connected to) ---
+
+  - id: R-TWIN
+    scope: nearby
+    when: {weaker_twin: {}}
+    severity: High
+    title: Copy of your Wi-Fi name with weaker security
+    next_step: >-
+      Don't connect to it. It may be set up to intercept traffic. Ask the landlord which
+      network is genuine.
+
+  - id: R-TWIN-VENDOR
+    scope: nearby
+    when: {twin_other_maker: {min_rssi: -60}}
+    severity: Medium
+    title: Possible lookalike of your Wi-Fi
+    next_step: >-
+      Possible lookalike. Mesh systems and extenders can explain this, so ask before assuming.
+
+  - id: R-TWIN-DOWNGRADE
+    scope: nearby
+    when: {downgrade_twin: {min_rssi: -60}}
+    severity: Medium
+    title: Possible downgrade lookalike of your Wi-Fi
+    next_step: >-
+      Possible lookalike that only offers older WPA2 security, which can be used to pull
+      devices off WPA3. Phone hotspots and extenders can explain this, so ask the landlord
+      before assuming.
+
+  - id: R-WPS
+    scope: nearby
+    when: {wps_enabled: {}}
+    severity: Medium
+    title: Your Wi-Fi router offers WPS
+    next_step: Ask the landlord to switch WPS off (it is open to PIN brute-forcing).
+
+  - id: R-CAMHOT
+    scope: nearby
+    when: {camera_hotspot: {}}
+    severity: Medium
+    title: Possible camera setup hotspot
+    next_step: >-
+      A camera may be broadcasting its own network. Use the locator to see where it's
+      strongest, then ask the host.
+
+  - id: R-TRACKER
+    scope: nearby
+    when: {tracker_repeated: {min_rounds: 2, min_rssi: -70}}
+    severity: Medium
+    title: Possible item tracker that isn't yours
+    next_step: >-
+      An item tracker is nearby and doesn't seem to belong to you. Find it with the locator;
+      a phone's built-in unknown-tracker alert gives a second opinion.
+
+  - id: R-HIDDEN
+    scope: nearby
+    when: {hidden_strong: {min_rssi: -60}}
+    severity: Low
+    title: Hidden Wi-Fi network with a strong signal
+    next_step: >-
+      Often harmless, since many routers hide a second network. Shown as context, not proof.
+
+  - id: R-OPEN
+    scope: nearby
+    when: {open_nearby: {max_listed: 10}}
+    severity: Info
+    title: Open Wi-Fi networks nearby
+    next_step: Don't use them for anything sensitive.

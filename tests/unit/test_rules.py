@@ -429,7 +429,7 @@ def test_summary_nothing_found_lists_what_was_not_checked():
         s.not_checked[0]
         == "Checking for a second device: Skipped because you chose a listen-only check."
     )
-    assert any("Bluetooth" in x for x in s.not_checked)  # Layer 4 isn't built yet
+    assert any("hints, not proof" in x for x in s.cant_see)  # Layer 4 blind spot
     assert any("memory card" in x for x in s.cant_see)
 
 
@@ -454,7 +454,7 @@ def test_info_findings_do_not_raise_the_status():
 # --- rules file -------------------------------------------------------------------------------
 
 
-def test_rules_file_has_the_layer3_rules():
+def test_rules_file_has_the_layer3_and_layer4_rules():
     assert [r.id for r in load_rules().rules] == [
         "R-CAM",
         "R-LOCK",
@@ -466,6 +466,14 @@ def test_rules_file_has_the_layer3_rules():
         "R-ARP",
         "R-DHCP",
         "R-CVE",
+        "R-TWIN",
+        "R-TWIN-VENDOR",
+        "R-TWIN-DOWNGRADE",
+        "R-WPS",
+        "R-CAMHOT",
+        "R-TRACKER",
+        "R-HIDDEN",
+        "R-OPEN",
     ]
 
 

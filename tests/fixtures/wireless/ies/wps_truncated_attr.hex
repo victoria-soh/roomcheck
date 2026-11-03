@@ -1,0 +1,5 @@
+# WPS element whose manufacturer attribute claims 32 bytes but has 2: state is still read.
+00 03 41 50 31
+dd 0f 00 50 f2 04
+      10 44 00 01 02                          #   configured
+      10 21 00 20 41 42                       #   manufacturer, cut off

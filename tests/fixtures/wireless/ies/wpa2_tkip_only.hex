@@ -1,0 +1,3 @@
+# RSN with TKIP as the only pairwise cipher: WPA2 in name, outdated in practice.
+00 03 4f 6c 64                                # SSID "Old"
+30 14 01 00 00 0f ac 02 01 00 00 0f ac 02 01 00 00 0f ac 02 00 00

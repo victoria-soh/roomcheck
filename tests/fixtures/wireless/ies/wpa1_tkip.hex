@@ -1,0 +1,7 @@
+# Original WPA only: Microsoft vendor element type 1, TKIP, PSK. No RSN.
+00 03 4f 6c 64
+dd 16 00 50 f2 01
+      01 00                                   #   version 1
+      00 50 f2 02                             #   group TKIP
+      01 00 00 50 f2 02                       #   pairwise TKIP
+      01 00 00 50 f2 02                       #   AKM PSK

@@ -16,6 +16,7 @@ dependencies = [
     "python-nmap>=0.7.1",
     "pyyaml>=6.0.3",
     "dnspython>=2.9.1",
+    "bleak>=1.0",
 ]
 
 [dependency-groups]

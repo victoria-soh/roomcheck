@@ -1,0 +1,7 @@
+# RSN with PSK and SAE AKMs (WPA2/WPA3 transition mode), MFP capable.
+00 04 4d 65 73 68                             # SSID "Mesh"
+30 18 01 00
+      00 0f ac 04                             #   group CCMP
+      01 00 00 0f ac 04                       #   pairwise CCMP
+      02 00 00 0f ac 02 00 0f ac 08           #   AKMs: PSK, SAE
+      80 00                                   #   capabilities: MFP capable

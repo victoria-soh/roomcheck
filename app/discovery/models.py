@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 from app.checks.models import NetworkFacts
 from app.fingerprint.models import Fingerprint, Identity
 from app.rules.models import Finding, RoomSummary
+from app.wireless.models import HeardCounts, NearbyItem
 
 Source = Literal["arp_sweep", "arp_passive", "dhcp", "mdns", "ssdp", "onvif", "tuya"]
 
@@ -87,3 +88,7 @@ class DiscoveryResult(BaseModel):
     network_facts: NetworkFacts | None = None  # Layer 3
     findings: list[Finding] = Field(default_factory=list)  # rules engine
     summary: RoomSummary | None = None  # rules engine
+    # Layer 4: flagged nearby items only (salted refs, no addresses), and counts of the rest
+    nearby_items: list[NearbyItem] = Field(default_factory=list)
+    nearby_heard: HeardCounts | None = None
+    room_network: str | None = None  # the Wi-Fi name nearby networks were compared with

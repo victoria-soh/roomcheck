@@ -21,7 +21,9 @@ from app.checks.models import ArpClaim, NetworkFacts
 from app.checks.wifi import is_weak
 from app.discovery.models import CheckStatus, Device, NetworkInfo
 from app.fingerprint.models import Band
-from app.rules.models import Finding, RoomSummary, Severity
+from app.rules.models import Finding, Match, RoomSummary, Severity
+from app.rules.nearby import NEARBY_PREDICATES
+from app.wireless.models import NearbySurvey
 
 RULES_FILE = Path(__file__).resolve().parent / "rules.yaml"
 SEVERITY_ORDER: dict[str, int] = {"High": 0, "Medium": 1, "Low": 2, "Info": 3}
@@ -36,17 +38,10 @@ class RoomFacts:
     network: NetworkInfo | None
     net: NetworkFacts = field(default_factory=NetworkFacts)
     checks: list[CheckStatus] = field(default_factory=list)
+    nearby: NearbySurvey | None = None  # Layer 4, in memory only
 
     def device(self, device_id: str) -> Device | None:
         return next((d for d in self.devices if d.id == device_id), None)
-
-
-@dataclass
-class Match:
-    band: Band
-    evidence: list[str]
-    variant: str | None = None
-    device_ref: str | None = None  # network rules may point at the device involved
 
 
 DevicePredicate = Callable[[Device, RoomFacts, dict[str, Any]], Match | None]
@@ -314,15 +309,15 @@ class Rule(BaseModel):
         if len(v) != 1:
             raise ValueError("`when` must name exactly one predicate")
         (name,) = v
-        if name not in DEVICE_PREDICATES and name not in NETWORK_PREDICATES:
+        if name not in DEVICE_PREDICATES | NETWORK_PREDICATES | NEARBY_PREDICATES:
             raise ValueError(f"unknown predicate {name!r}")
         return v
 
     @field_validator("scope")
     @classmethod
     def _scope(cls, v: str) -> str:
-        if v not in ("device", "network"):
-            raise ValueError("scope must be device or network")
+        if v not in ("device", "network", "nearby"):
+            raise ValueError("scope must be device, network or nearby")
         return v
 
     @field_validator("evidence_fields")
@@ -358,7 +353,12 @@ def load_rules(path: Path = RULES_FILE) -> RulesFile:
         rules = RulesFile.model_validate(yaml.safe_load(f))
     for r in rules.rules:
         pred = r.predicate_name()
-        expected = DEVICE_PREDICATES if r.scope == "device" else NETWORK_PREDICATES
+        scopes: dict[str, dict[str, Any]] = {
+            "device": DEVICE_PREDICATES,
+            "network": NETWORK_PREDICATES,
+            "nearby": NEARBY_PREDICATES,
+        }
+        expected = scopes[r.scope]
         if pred not in expected:
             raise ValueError(f"{r.id}: predicate {pred!r} doesn't fit scope {r.scope!r}")
     return rules
@@ -372,8 +372,14 @@ def _finding(rule: Rule, m: Match, device: Device | None) -> Finding:
     if device is not None:
         evidence += [x for x in (_field(f, device) for f in rule.evidence_fields) if x]
     ref = device.id if device is not None else m.device_ref
+    if device is not None:
+        key = device.id
+    elif rule.scope == "nearby":
+        key = m.nearby_ref or "nearby"
+    else:
+        key = "network"
     return Finding(
-        id=f"{rule.id}:{device.id if device is not None else 'network'}",
+        id=f"{rule.id}:{key}",
         rule_id=rule.id,
         severity=rule.pick(rule.severity, m.variant),
         confidence_band=m.band,
@@ -382,6 +388,7 @@ def _finding(rule: Rule, m: Match, device: Device | None) -> Finding:
         evidence=evidence,
         next_step=" ".join(rule.pick(rule.next_step, m.variant).split()),
         guidance=[" ".join(g.split()) for g in rule.guidance],
+        nearby_ref=m.nearby_ref,
     )
 
 
@@ -396,6 +403,10 @@ def evaluate(facts: RoomFacts, rules: RulesFile | None = None) -> list[Finding]:
                 m = DEVICE_PREDICATES[name](d, facts, args)
                 if m is not None:
                     findings.append(_finding(rule, m, d))
+        elif rule.scope == "nearby":
+            if facts.nearby is not None:
+                for m in NEARBY_PREDICATES[name](facts.nearby, args):
+                    findings.append(_finding(rule, m, None))
         else:
             m = NETWORK_PREDICATES[name](facts, args)
             if m is not None:

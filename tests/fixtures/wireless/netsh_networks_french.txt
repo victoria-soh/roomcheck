@@ -1,0 +1,8 @@
+
+Nom de l'interface : Wi-Fi
+Il existe actuellement 1 réseaux visibles.
+
+Nom du réseau 1 : HomeNet
+    Type de réseau           : Infrastructure
+    Authentification         : WPA2 - Personnel
+    Chiffrement              : CCMP

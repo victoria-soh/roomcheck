@@ -1,0 +1,3 @@
+# Enhanced Open (OWE): encrypted, but anyone can join.
+00 04 43 61 66 65                             # SSID "Cafe"
+30 14 01 00 00 0f ac 04 01 00 00 0f ac 04 01 00 00 0f ac 12 c0 00
