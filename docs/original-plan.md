@@ -1,6 +1,8 @@
 # RoomCheck: SafeSpace Hacks Build Plan
 
-Nov 2, 2026 · @meow
+> Original design plan. Where it differs from the app (e.g. 'landlord' → 'host', PDF via Playwright not WeasyPrint), the README and the app are current.
+
+Nov 2, 2026
 
 ## Summary and problem statement
 

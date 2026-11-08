@@ -43,11 +43,22 @@ def normalize_mac(mac: str) -> str:
     return ":".join(hexdigits[i : i + 2] for i in range(0, 12, 2))
 
 
-def default_route() -> tuple[Any, str, str]:
-    """(scapy interface, own IP, gateway IP) for the default route."""
+def refresh_routes() -> None:
+    """Re-read Windows' interfaces and routes into scapy. scapy reads them once, at import, and
+    keeps them: after the laptop rejoins Wi-Fi with a new address, the old copy points at an
+    address it no longer has. About 50 ms, so it's done on every read, never cached."""
     import scapy.route  # noqa: F401 - populates conf.route
     from scapy.config import conf
 
+    conf.ifaces.reload()
+    conf.route.resync()
+
+
+def default_route() -> tuple[Any, str, str]:
+    """(scapy interface, own IP, gateway IP) for the default route, read fresh each call."""
+    from scapy.config import conf
+
+    refresh_routes()
     iface, own_ip, gateway = conf.route.route("0.0.0.0")
     if not own_ip or own_ip == "0.0.0.0" or not gateway or gateway == "0.0.0.0":
         raise NoNetworkError("no default route")

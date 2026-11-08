@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 import threading
+import time
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from multiprocessing.connection import Connection, Listener
@@ -61,6 +62,7 @@ def handle_request(raw: bytes, jobs: Mapping[str, Job]) -> dict[str, Any]:
         params = job.params.model_validate(req.get("params") or {})
     except ValidationError:
         return _error("bad_params")
+    started = time.monotonic()
     try:
         return {"ok": True, "result": job.run(params)}
     except JobError as e:
@@ -70,6 +72,9 @@ def handle_request(raw: bytes, jobs: Mapping[str, Job]) -> dict[str, Any]:
     except Exception:
         log.exception("job %s failed", name)
         return _error("internal")
+    finally:
+        # One line per job in the terminal, so a slow job can be told from a stuck one.
+        log.info("job %s finished in %.1f s", name, time.monotonic() - started)
 
 
 class Server:

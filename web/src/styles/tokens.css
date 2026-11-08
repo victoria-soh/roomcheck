@@ -1,0 +1,118 @@
+/* RoomCheck design tokens: the one place for colour, type, spacing, shapes, shadow and motion.
+   Tailwind turns each into utility classes (e.g. --color-ink -> text-ink, bg-ink; --spacing ->
+   p-1 = 8 px). Components use these, never one-off values. See docs/design-system.md.
+
+   Personality: precise, calm and capable, with a bright summery teal. A few deliberate choices
+   repeat: lagoon for the logo and primary actions, a deep teal of the same hue for links and
+   small teal text, a light aqua for tints, and severity colour only for findings and warnings.
+
+   Contrast (WCAG 2.2 AA: 4.5:1 text, 3:1 large text, icons, control edges and focus), from
+   scripts/contrast.mjs; src/styles/contrast.test.ts checks every pair on each test run:
+     ink on canvas 14.08, surface 15.06, aqua 12.63, lagoon 5.21 (primary buttons), hover 6.60
+     muted on canvas 5.82, surface 6.22, aqua 5.22, notice 5.79, disabled 5.52
+     accent (deep teal) on canvas 5.92, surface 6.33, aqua 5.31, info-tint 5.65; hover 7.39
+     focus (ink) on canvas 14.08, surface 15.06, around a lagoon button 5.21
+     line-strong on surface 4.07, canvas 3.81 (control edges)
+     accent as the active-tab underline and selected-chip edge on surface 6.33
+       (lagoon itself is 2.89 on white, so it's only ever a fill, never a line or text)
+     sev-high on surface 6.57, its tint 5.75; sev-medium 5.43, tint 4.89
+     sev-low 7.69, tint 6.78; sev-info 7.25, tint 6.41
+     notice: ink 14.01, the warning icon 5.05; error tint: ink 13.17, icon 5.75; info tint 13.45
+     danger on surface 6.57, white on danger 6.57; wordmark on surface 15.06 */
+
+@theme {
+  /* Surfaces */
+  --color-canvas: #f1f9f8; /* the pale page background */
+  --color-surface: #ffffff; /* cards, the header */
+  --color-aqua: #d4f1ee; /* light aqua: soft accents and tinted surfaces */
+  --color-raised: #e8f6f4; /* tinted boxes inside cards, e.g. the next step */
+  --color-line: #cfe7e4; /* 1 px decorative borders */
+  --color-line-strong: #5a8681; /* edges of controls */
+  --color-disabled: #eef2f2; /* unavailable controls */
+
+  /* Text */
+  --color-ink: #0e2b28;
+  --color-muted: #4a6664; /* secondary text */
+
+  /* The teal family */
+  --color-lagoon: #1ba9a6; /* brand: the logo, primary buttons, selected fills */
+  --color-lagoon-hover: #3fbdba; /* lighter, so ink on it stays above 4.5:1 */
+  --color-accent: #0b6b68; /* deep teal: links, small teal text, active-tab underline */
+  --color-accent-hover: #08605d;
+  --color-focus: #0e2b28; /* the focus ring: ink, so it never looks like a teal selection */
+
+  /* Severity and warnings only: findings, notices, destructive actions */
+  --color-sev-high: #b42318;
+  --color-sev-high-tint: #fdeceb;
+  --color-sev-medium: #b54708;
+  --color-sev-medium-tint: #fdf1e7;
+  --color-sev-low: #475467;
+  --color-sev-low-tint: #eef1f4;
+  --color-sev-info: #3c5a72;
+  --color-sev-info-tint: #ebf2f7;
+  --color-notice: #fef6e6; /* warning notices */
+  --color-notice-line: #f3d79b;
+  --color-error-tint: #fdeceb; /* error notices */
+  --color-error-line: #f4b9b3;
+  --color-info-tint: #e3f6f4; /* info notices */
+  --color-danger: #b42318; /* destructive buttons */
+  --color-on-danger: #ffffff;
+
+  /* Type, all bundled (docs/design-system.md):
+       Plus Jakarta Sans 600/700   headings, card titles, the summary headline (font-display)
+       Atkinson Hyperlegible Next  body and UI text: 400, 600 for labels and buttons, 700 for
+                                   the current page in the header (font-sans); its digits
+                                   0-9 come from Plus Jakarta Sans (styles/digits.css)
+       JetBrains Mono 400          fingerprints, hashes, addresses shown as codes (font-mono)
+       Saira 600                   the wordmark only
+     The scale:
+       page title 28 px (36 px from sm) / 1.15     text-xl, sm:text-2xl (Plus Jakarta Sans 700)
+       section heading 20 px / 1.4                 text-lg (Plus Jakarta Sans 600)
+       card title 18 px / 1.4                      text-card (Plus Jakarta Sans 600)
+       body 16 px / 1.6                            text-base (Atkinson Hyperlegible Next 400)
+       helper and label 14 px / 1.5                text-sm (labels 600)
+     Body text is kept to about 70 characters a line (max-w-measure). */
+  --font-sans: "Atkinson Hyperlegible Next", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Plus Jakarta Sans", "Atkinson Hyperlegible Next", system-ui, "Segoe UI", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, "Courier New", monospace;
+  --font-wordmark: "Saira", system-ui, "Segoe UI", Arial, sans-serif;
+  --color-wordmark: #0e2b28;
+  --text-brand: 1.3125rem; /* 21 px: the wordmark */
+  --text-brand--line-height: 1;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.5;
+  --text-base: 1rem;
+  --text-base--line-height: 1.6;
+  --text-card: 1.125rem;
+  --text-card--line-height: 1.4;
+  --text-lg: 1.25rem;
+  --text-lg--line-height: 1.4;
+  --text-xl: 1.75rem;
+  --text-xl--line-height: 1.2;
+  --text-2xl: 2.25rem;
+  --text-2xl--line-height: 1.15;
+
+  /* Spacing: an 8 px scale. p-1 = 8 px, p-2 = 16 px, p-3 = 24 px, p-4 = 32 px. */
+  --spacing: 0.5rem;
+  --container-content: 65rem; /* 1040 px: every page */
+  --container-narrow: 52rem; /* the Start column */
+  --container-form: 40rem; /* 640 px: forms (Report, Verify, notes) */
+  --container-measure: 70ch; /* body text line length */
+
+  /* Shapes: 8 px controls, 12 px cards. Full pills only for small badges and filter chips. */
+  --radius-control: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-inner: 0.5rem; /* boxes inside cards, the same as controls */
+
+  /* One shadow level, subtle. */
+  --shadow-soft: 0 1px 2px rgb(14 43 40 / 0.05), 0 2px 8px rgb(14 43 40 / 0.04);
+
+  /* Motion: 150 ms transitions, off under reduced motion (index.css). */
+  --default-transition-duration: 150ms;
+  --animate-spin: spin 1.6s linear infinite;
+
+  /* The sticky header's height, for scroll-padding (WCAG 2.2 Focus Not Obscured). */
+  --header-height: 7rem;
+  --header-height-compact: 4.5rem;
+
+}

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>RoomCheck handover report</title>
+<style>
+  @font-face { font-family: "Saira"; font-weight: 600; src: url(data:font/woff2;base64,{{ wordmark_font }}) format("woff2"); }
+  {% for f in fonts %}@font-face { font-family: "{{ f.family }}"; font-weight: {{ f.weight }}; font-display: swap; src: url(data:font/woff2;base64,{{ f.data }}) format("woff2");{% if f.range %} unicode-range: {{ f.range }};{% endif %} }
+  {% endfor %}
+  .brand { display: flex; align-items: center; gap: 2.5mm; margin: 0 0 3mm; }
+  .brand svg { width: 9mm; height: 9mm; }
+  .wordmark { font-family: "Saira", "Segoe UI", Arial, sans-serif; font-weight: 600; font-size: 16pt; color: #0E2B28; }
+  @page { size: A4; margin: 18mm 16mm; @bottom-right { content: "Page " counter(page) " of " counter(pages); font-size: 9pt; color: #444; } }
+  body { font-family: "Atkinson Hyperlegible Next", "Segoe UI", Arial, sans-serif; font-size: 10.5pt; color: #111; line-height: 1.4; }
+  h1, h2, h3 { font-family: "Plus Jakarta Sans", "Segoe UI", Arial, sans-serif; }
+  h1 { font-size: 18pt; font-weight: 700; margin: 0 0 2mm; }
+  h2 { font-size: 13pt; margin: 7mm 0 2mm; border-bottom: 1px solid #999; padding-bottom: 1mm; }
+  h3 { font-size: 11pt; margin: 0 0 1mm; }
+  .meta td { padding: 0 4mm 0.5mm 0; vertical-align: top; }
+  .banner { border: 2px solid #111; padding: 3mm; margin: 4mm 0; font-size: 12pt; font-weight: bold; }
+  .finding { border: 1px solid #888; padding: 3mm; margin: 0 0 3mm; page-break-inside: avoid; }
+  .card { margin: 0 0 3mm; }
+  .card .finding { margin: 0 0 1.5mm; }
+  .also { margin: 1mm 0 0 4mm; }
+  .also > p { page-break-after: avoid; }
+  .status { font-weight: bold; margin: 0 0 2mm; }
+  .top-line { font-weight: normal; font-size: 10.5pt; }
+  .for-host { border-left: 3px solid #1BA9A6; padding-left: 3mm; }
+  .listening { border: 1px solid #888; padding: 2mm 3mm; margin: 0 0 3mm; }
+  .sev { font-weight: bold; }
+  .icon { display: inline-block; vertical-align: -1px; margin-right: 1mm; }
+  .label { font-size: 8.5pt; color: #333; font-style: italic; }
+  .small { font-size: 9pt; color: #333; }
+  ul { margin: 1mm 0 1mm 5mm; padding: 0; }
+  .message { white-space: pre-wrap; border-left: 3px solid #555; padding-left: 3mm; }
+</style>
+</head>
+<body>
+<div class="brand" aria-label="RoomCheck">
+  <svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="{{ logo_path }}" fill="#1BA9A6" fill-rule="evenodd"/></svg>
+  <span class="wordmark">RoomCheck</span>
+</div>
+<h1>RoomCheck handover report</h1>
+<table class="meta">
+  {% if room_label %}<tr><td><b>Room</b></td><td>{{ room_label }}</td></tr>{% endif %}
+  <tr><td><b>Scan</b></td><td>{{ scan_started }} to {{ scan_finished }}</td></tr>
+  <tr><td><b>Report made</b></td><td>{{ generated }}</td></tr>
+  <tr><td><b>Type of check</b></td><td>{{ mode }}</td></tr>
+  {% if network %}<tr><td><b>Network checked</b></td><td>{{ network }}{% if room_network %} (Wi-Fi "{{ room_network }}"){% endif %}</td></tr>{% endif %}
+  {% if stay %}<tr><td><b>{{ stay_label }}</b></td><td>{{ stay }}</td></tr>{% endif %}
+</table>
+
+<h2>{{ for_host_title }}</h2>
+<p class="for-host">{{ for_host }}</p>
+
+{% if tasks %}
+<h2>{{ tasks_title }}</h2>
+<table>
+<tr><th>Task</th><th>Who to ask</th><th>Status</th><th>Changed</th></tr>
+<!-- Status is the workflow (To do, Asked, Resolved); evidence is listed under each task. -->
+{% for t in tasks %}
+<tr><td>{{ t.urgency }}: {{ t.title }}{% if t.notes %}<br><span class="small">Notes: {{ t.notes }}</span>{% endif %}
+{% if t.labels %}<br><span class="small"><b>{{ t.labels | join(" · ") }}</b></span>{% endif %}
+{% for line in t.rechecks %}<br><span class="small">{{ line }}</span>{% endfor %}
+{% if t.unobservable %}<br><span class="small">RoomCheck can't check this. It relies on the host's confirmation.</span>{% endif %}</td><td>{{ t.who }}</td><td>{{ t.status }}</td><td>{{ t.changed }}</td></tr>
+{% endfor %}
+</table>
+{% endif %}
+
+<h2>{{ physical_title }}</h2>
+<p>{{ physical.line }}</p>
+{% if physical.looked_at %}<p class="small">{{ physical.looked_at | join(" · ") }}</p>{% endif %}
+{% if physical.noted %}<p class="small"><b>{{ physical.noted_title }}:</b></p>
+<ul class="small">{% for n in physical.noted %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+{% if physical.notes_left_out %}<p class="small">{{ physical.notes_left_out }}</p>{% endif %}
+
+<h2>{{ details_title }}</h2>
+
+{% if summary %}
+<div class="banner">{{ status_icon }} {{ summary.status }}. {{ things_line }}: {{ per_question }}{% if top_line %}<br><span class="top-line">{{ top_line }}</span>{% endif %}</div>
+{% endif %}
+<p class="small">{{ page_note }}</p>
+{% if listening %}<div class="listening"><p><b>{{ listening_title }}</b></p>{% for line in listening %}<p class="small">{{ line }}</p>{% endfor %}</div>{% endif %}
+
+{% macro finding_block(f) %}
+<div class="finding">
+  <h3>{{ f.title }} · <span class="sev">{{ f.icon }} {{ f.urgency }}</span></h3>
+  {% if f.name %}<p class="small">Your name for it: {{ f.name }}</p>{% endif %}
+  {% if f.note %}<p class="small">Your note: {{ f.note }}</p>{% endif %}
+  {% if f.about %}<p class="small">About: {{ f.about }}</p>{% endif %}
+  {% if f.clues %}<p><b>What we observed:</b></p>
+  <ul>{% for c in f.clues %}<li>{{ c }}</li>{% endfor %}</ul>
+  {% else %}<p><b>What we observed:</b> {{ f.observed }}</p>{% endif %}
+  <p><b>What it could mean:</b> {{ f.could_mean }}</p>
+  <p>{{ f.explanation }} {{ f.why_it_matters }}<br><span class="label">{{ f.explanation_label }}</span></p>
+  {% if f.answer %}<p class="small"><b>Do you recognise this device?</b> {{ f.answer }}</p>{% endif %}
+  {% if f.location %}<p class="small"><b>Where is it?</b> {{ f.location }}</p>{% endif %}
+  <p><b>Next step:</b> {{ f.next_step }}</p>
+  {% if f.guidance %}<ul>{% for g in f.guidance %}<li>{{ g }}</li>{% endfor %}</ul>{% endif %}
+  <p class="small"><b>Why we think this:</b> identification confidence {{ f.band }} · priority: {{ f.urgency }}</p>
+  <ul class="small">{% for e in f.evidence %}<li>{{ e }}</li>{% endfor %}</ul>
+</div>
+{% endmacro %}
+{% macro also_block(items) %}
+<div class="also">
+  <p class="small"><b>{{ also_title }}</b> ({{ also_intro }})</p>
+  {% for f in items %}{{ finding_block(f) }}{% endfor %}
+</div>
+{% endmacro %}
+
+{% for q in questions %}
+<h2>{{ q.title }}</h2>
+<p class="status">{{ q.status }}</p>
+{% if q.partly %}<p class="small">{{ q.partly }}</p>{% endif %}
+{% if q.weak_camera %}<p class="small">{{ q.weak_camera }}</p>{% endif %}
+{% for card in q.cards %}
+<div class="card">
+  {% for f in card.findings %}{{ finding_block(f) }}{% endfor %}
+  {% if card.also %}{{ also_block(card.also) }}{% endif %}
+</div>
+{% endfor %}
+{% if q.also %}{{ also_block(q.also) }}{% endif %}
+{% endfor %}
+
+<h2>{{ changes.title }}</h2>
+{% if changes.status %}<p class="status">{{ changes.status }}</p>{% endif %}
+{% for line in changes.notes %}<p class="small">{{ line }}</p>{% endfor %}
+
+
+
+{% if landlord %}
+<h2>Message to the host (draft)</h2>
+<p class="message">{{ landlord.text }}</p>
+<p class="label">{{ landlord.label }} {{ landlord.note }}</p>
+{% endif %}
+
+<h2>Coverage and limits</h2>
+<p>{{ coverage_line }}</p>
+{% if check_rows %}
+<table>
+  <tr><th>Check</th><th>Result</th></tr>
+  {% for label, line in check_rows %}<tr><td>{{ label }}</td><td>{{ line }}</td></tr>{% endfor %}
+</table>
+{% endif %}
+
+<h2>What this scan can't see</h2>
+<ul>{% for item in cant_see %}<li>{{ item }}</li>{% endfor %}</ul>
+
+<h2>Limitations</h2>
+<ul>{% for item in limitations %}<li>{{ item }}</li>{% endfor %}</ul>
+
+<h2>About this report</h2>
+<p class="small">Device addresses are shortened to the maker and the last three parts. Nearby
+networks and Bluetooth devices that weren't flagged were not kept, and the names of
+neighbours' open networks are left out. This report's SHA-256 hash is saved next to it in a
+.sha256 file, and a trusted timestamp (if one could be obtained) in a .tsr file. Use
+RoomCheck's "Verify a report" to check them. The timestamp shows when the report existed, not
+that its findings are correct.</p>
+</body>
+</html>

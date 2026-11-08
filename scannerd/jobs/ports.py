@@ -1,6 +1,7 @@
 """Layer 2 port check: nmap with a fixed port list and fixed settings, run only by scannerd.
 
-The job takes no parameters. Targets are the hosts scannerd's own ARP sweep found this session,
+The job takes no parameters. Targets are the hosts scannerd's own ARP sweep or passive listener
+saw this session (see scannerd/session.py),
 re-checked against the current subnet; the arguments are constants. Nothing from the app ever
 reaches the nmap command line.
 """
@@ -77,7 +78,7 @@ def port_scan(params: PortScanParams) -> list[dict[str, Any]]:
     except NoNetworkError as e:
         raise JobError("no_network") from e
 
-    targets = select_targets(session.swept_hosts(), net.cidr, net.own_ip)
+    targets = select_targets(session.port_targets(), net.cidr, net.own_ip)
     if not targets:
         return []
     try:

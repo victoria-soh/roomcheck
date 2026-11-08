@@ -56,6 +56,10 @@ class Signal(BaseModel):
     weight: float = Field(gt=0, lt=1)
     when: When
     evidence: str
+    # One fixed plain sentence for "What we observed"; "{detail}" is the value that matched.
+    clue: str
+    # How plain the clue is to a renter, 1 the plainest: picks the summary's clue only.
+    plain_rank: int = Field(ge=1, le=5)
 
 
 class TypeSpec(BaseModel):
@@ -149,6 +153,13 @@ def match(when: When, f: Facts) -> str | None:
     return "; ".join(r for r in results if r)
 
 
+def clue(template: str, detail: str) -> str:
+    """The signal's plain sentence, with the value that matched in place of "{detail}"."""
+    return (
+        template.replace("{detail}", detail.split("; ")[0]) if "{detail}" in template else template
+    )
+
+
 def score_types(f: Facts, weights: Weights) -> list[TypeScore]:
     """Every type with at least one matching signal, highest score first."""
     scores = []
@@ -158,7 +169,15 @@ def score_types(f: Facts, weights: Weights) -> list[TypeScore]:
             detail = match(s.when, f)
             if detail is not None:
                 text = f"{s.evidence} ({detail})" if detail else s.evidence
-                evidence.append(Evidence(signal=s.id, weight=s.weight, text=text))
+                evidence.append(
+                    Evidence(
+                        signal=s.id,
+                        weight=s.weight,
+                        text=text,
+                        clue=clue(s.clue, detail),
+                        plain_rank=s.plain_rank,
+                    )
+                )
         if evidence:
             score = round(noisy_or([e.weight for e in evidence]), 3)
             scores.append(

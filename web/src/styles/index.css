@@ -1,0 +1,152 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+@layer base {
+  html {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    /* The header is sticky: scrolling to a target, a "Review finding" card or a focused
+       control leaves room for it, so it never hides what has focus (WCAG 2.2 2.4.11). */
+    scroll-padding-top: calc(var(--header-height-compact) + 1rem);
+  }
+
+  /* With results, the header has its navigation row too. */
+  html:has(header nav[aria-label="Main"]) {
+    scroll-padding-top: calc(var(--header-height) + 1rem);
+  }
+
+  /* Every anchor a link scrolls to (sections, cards, Coverage and limits) keeps a margin of its
+     own as well, so its heading clears the sticky header even where scroll-padding isn't used. */
+  main [id]:is(section, article, details, h1, h2, h3) {
+    scroll-margin-top: 0.5rem;
+  }
+
+  /* A visible ink focus ring on everything the keyboard can reach: never teal, so it can't be
+     mistaken for a selected state. */
+  :focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 3px;
+    border-radius: var(--radius-control);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* Long words and file names wrap instead of forcing sideways scrolling at 200% zoom. */
+  body {
+    overflow-wrap: anywhere;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+}
+
+@layer components {
+  /* The results summary: a light aqua tint that fades to white, so text keeps its contrast. */
+  .summary-glow {
+    background-image: linear-gradient(
+      135deg,
+      var(--color-aqua) 0%,
+      color-mix(in oklab, var(--color-aqua) 45%, white) 45%,
+      white 85%
+    );
+  }
+
+  /* The navigation row on narrow screens scrolls sideways; a fade at the edge says so. */
+  .scroll-cue {
+    scrollbar-width: thin;
+    mask-image: linear-gradient(to right, black calc(100% - 2rem), transparent);
+  }
+  @media (min-width: 40rem) {
+    .scroll-cue {
+      mask-image: none;
+    }
+  }
+
+  /* The phone's priority chips: while more are off-screen to the right, the row fades out at
+     its right edge; Results removes the class once it's scrolled to the end. */
+  @media (max-width: 39.99rem) {
+    .chip-fade {
+      mask-image: linear-gradient(to right, black calc(100% - 2.5rem), transparent);
+    }
+  }
+
+  /* The one motion effect: a slow lagoon sweep along the top of the Scanning card while a
+     check runs. Off under reduced motion; error notices and reading areas never move. */
+  /* Scan progress: tasks done, as a plain bar (Scanning.tsx). Native <progress>, styled here
+     because inline styles are blocked (CSP). It eases only when motion is allowed. */
+  .scan-progress {
+    display: block;
+    inline-size: 100%;
+    block-size: 0.5rem;
+    appearance: none;
+    border: 0;
+    border-radius: 999px;
+    overflow: hidden;
+    background: var(--color-line);
+    color: var(--color-lagoon);
+  }
+  .scan-progress::-webkit-progress-bar {
+    background: var(--color-line);
+    border-radius: 999px;
+  }
+  .scan-progress::-webkit-progress-value {
+    background: var(--color-lagoon);
+    border-radius: 999px;
+  }
+  .scan-progress::-moz-progress-bar {
+    background: var(--color-lagoon);
+    border-radius: 999px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .scan-progress::-webkit-progress-value {
+      transition: inline-size 0.4s ease;
+    }
+  }
+
+  /* "Review finding": the card it lands on is marked for a moment (Results.tsx removes the
+     class after 2 s). A deep-teal ring and an aqua halo; with motion allowed, the halo fades. */
+  .review-highlight {
+    box-shadow:
+      0 0 0 3px var(--color-accent),
+      0 0 0 8px var(--color-aqua);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .review-highlight {
+      animation: review-fade 2s ease-out forwards;
+    }
+  }
+  @keyframes review-fade {
+    0%,
+    60% {
+      box-shadow:
+        0 0 0 3px var(--color-accent),
+        0 0 0 8px var(--color-aqua);
+    }
+    100% {
+      box-shadow: 0 0 0 0 transparent;
+    }
+  }
+}
+
+/* Respect the system's reduced-motion setting everywhere, not just where we remembered. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

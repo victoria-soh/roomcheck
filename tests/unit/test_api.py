@@ -72,21 +72,33 @@ def _scan(monkeypatch, **kwargs):
     from app.wireless.models import BssReading, NearbySurvey
     from app.wireless.survey import aggregate_wifi
 
-    monkeypatch.setattr(scan_mod, "run_discovery", lambda mode, collectors: fake_result(mode))
+    monkeypatch.setattr(scan_mod, "run_discovery", lambda mode, collectors, **kw: fake_result(mode))
     monkeypatch.setattr(scan_mod, "default_collectors", lambda scanner, duration: [])
     monkeypatch.setattr(wifi_mod, "connected_wifi", lambda: None)
 
     def nearby_fn():
         rounds = [
             [
-                BssReading(bssid="cc:ba:bd:ac:94:d9", ssid="HomeNet", rssi_dbm=-40,
-                           security=make_security("wpa2", pairwise=["CCMP"])),
-                BssReading(bssid="9a:3b:4c:00:11:22", ssid="HomeNet", rssi_dbm=-42,
-                           security=make_security("open")),
+                BssReading(
+                    bssid="cc:ba:bd:00:10:d9",
+                    ssid="HomeNet",
+                    rssi_dbm=-40,
+                    security=make_security("wpa2", pairwise=["CCMP"]),
+                ),
+                BssReading(
+                    bssid="9a:3b:4c:00:11:22",
+                    ssid="HomeNet",
+                    rssi_dbm=-42,
+                    security=make_security("open"),
+                ),
             ]
         ] * 2
-        survey = NearbySurvey(access_points=aggregate_wifi(rounds), wifi_method="wlanapi",
-                              ble_devices=[], ble_rounds=3)
+        survey = NearbySurvey(
+            access_points=aggregate_wifi(rounds),
+            wifi_method="wlanapi",
+            ble_devices=[],
+            ble_rounds=3,
+        )
         return survey, [], []
 
     return scan_mod.run_scan(False, None, 10, online=False, nearby_fn=nearby_fn, **kwargs)
@@ -94,7 +106,7 @@ def _scan(monkeypatch, **kwargs):
 
 def test_full_scan_includes_nearby_findings(monkeypatch):
     result = _scan(monkeypatch, typed_room="HomeNet")
-    assert [f.rule_id for f in result.findings] == ["R-TWIN"]
+    assert [(f.rule_id, f.scope) for f in result.findings] == [("R-TWIN", "nearby")]
     assert result.room_network == "HomeNet"
     assert [i.rule_ids for i in result.nearby_items] == [["R-TWIN"]]
     assert result.nearby_heard.wifi_access_points == 2
@@ -104,5 +116,5 @@ def test_full_scan_includes_nearby_findings(monkeypatch):
 def test_full_scan_without_nearby_says_so(monkeypatch):
     result = _scan(monkeypatch, include_nearby=False)
     skipped = {c.name: c.reason for c in result.checks if c.status == "skipped"}
-    assert skipped["nearby_wifi"] == "Skipped because you chose not to run the nearby check."
+    assert skipped["nearby_wifi"] == "Not checked, because you chose not to run the nearby check."
     assert result.nearby_heard is None and result.nearby_items == []

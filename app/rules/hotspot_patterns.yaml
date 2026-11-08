@@ -3,7 +3,7 @@
 #
 # Names are easy to change, so a match is a hint, never proof. This is a starting set built from
 # common setup-hotspot naming; confirm each pattern against your own test devices or the maker's
-# setup manual before relying on it (PLAN.md, Testing), and add what you find.
+# setup manual before relying on it (docs/original-plan.md, Testing), and add what you find.
 #
 # Each pattern:
 #   id        short name

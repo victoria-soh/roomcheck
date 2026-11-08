@@ -16,12 +16,23 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from app.baseline.keys import device_keys
+from app.baseline.models import BaselineFacts
 from app.checks.dns import is_tampered
 from app.checks.models import ArpClaim, NetworkFacts
 from app.checks.wifi import is_weak
 from app.discovery.models import CheckStatus, Device, NetworkInfo
-from app.fingerprint.models import Band
-from app.rules.models import Finding, Match, RoomSummary, Severity
+from app.fingerprint.models import Band, Evidence
+from app.rules.models import (
+    Draft,
+    Finding,
+    Location,
+    Match,
+    Question,
+    RoomSummary,
+    Severity,
+    StayType,
+)
 from app.rules.nearby import NEARBY_PREDICATES
 from app.wireless.models import NearbySurvey
 
@@ -39,6 +50,8 @@ class RoomFacts:
     net: NetworkFacts = field(default_factory=NetworkFacts)
     checks: list[CheckStatus] = field(default_factory=list)
     nearby: NearbySurvey | None = None  # Layer 4, in memory only
+    baseline: BaselineFacts | None = None  # Layer 6: the move-in scan's keys, if one is saved
+    stay: StayType | None = None  # where the user is staying, from Start
 
     def device(self, device_id: str) -> Device | None:
         return next((d for d in self.devices if d.id == device_id), None)
@@ -52,24 +65,74 @@ NetworkPredicate = Callable[[RoomFacts, dict[str, Any]], Match | None]
 
 
 def _type_score(device: Device, type_id: str) -> tuple[float, Band, list[str], str] | None:
+    found = _type_match(device, type_id)
+    if found is None:
+        return None
+    score, band, evidence, label = found
+    return score, band, [e.text for e in evidence], label
+
+
+def _type_match(device: Device, type_id: str) -> tuple[float, Band, list[Evidence], str] | None:
     fp = device.fingerprint
     if fp is None:
         return None
     if fp.type == type_id:
-        return fp.confidence, fp.band, [e.text for e in fp.evidence], fp.label
+        return fp.confidence, fp.band, fp.evidence, fp.label
     for t in fp.other_types + fp.weak_types:
         if t.type == type_id:
-            return t.score, t.band, [e.text for e in t.evidence], t.label
+            return t.score, t.band, t.evidence, t.label
     return None
 
 
+def _lead_clue(evidence: list[Evidence]) -> str:
+    """The plainest clue for the summary (weights.yaml plain_rank; the stronger one on a tie).
+    Only which sentence leads changes: the score and the clue list stay as they are."""
+    ranked = sorted((e for e in evidence if e.clue), key=lambda e: (e.plain_rank, -e.weight))
+    return ranked[0].clue if ranked else ""
+
+
+def _clues(evidence: list[Evidence]) -> list[str]:
+    """The plain sentences for "What we observed", strongest clue first, each said once."""
+    return list(dict.fromkeys(e.clue for e in evidence if e.clue))
+
+
 def type_score(device: Device, facts: RoomFacts, args: dict[str, Any]) -> Match | None:
-    found = _type_score(device, str(args["type"]))
+    found = _type_match(device, str(args["type"]))
     if found is None or found[0] < float(args["min"]):
         return None
     _, band, evidence, label = found
     return Match(
-        band=band, evidence=[f"Looks like a {label.lower()}: {band}", *evidence], variant=band
+        band=band,
+        evidence=[f"Looks like a {label.lower()}: {band}", *(e.text for e in evidence)],
+        variant=band,
+        clues=_clues(evidence),
+        lead_clue=_lead_clue(evidence),
+    )
+
+
+def new_since_baseline(device: Device, facts: RoomFacts, args: dict[str, Any]) -> Match | None:
+    """A device of this type (e.g. camera-like) that wasn't in the move-in scan. A device whose
+    soft key matches is "possibly the same device", so it doesn't count as new; nor does a
+    device with no stable key, since there's nothing to compare it on."""
+    if facts.baseline is None:
+        return None
+    found = _type_match(device, str(args["type"]))
+    if found is None or found[0] < float(args["min"]):
+        return None
+    keys = device_keys(device, facts.baseline.salt)
+    if keys.key is None or keys.key in facts.baseline.keys or keys.soft in facts.baseline.soft_keys:
+        return None
+    _, band, evidence, label = found
+    when = f"{facts.baseline.saved_at:%d %b %Y}".lstrip("0")
+    return Match(
+        band=band,
+        evidence=[
+            f"It wasn't in your move-in scan on {when}.",
+            f"Looks like a {label.lower()}: {band}",
+            *(e.text for e in evidence),
+        ],
+        clues=[f"It wasn't in your move-in scan on {when}.", *_clues(evidence)],
+        lead_clue=_lead_clue(evidence),
     )
 
 
@@ -83,20 +146,24 @@ def open_port(device: Device, facts: RoomFacts, args: dict[str, Any]) -> Match |
 
 def cloud_link(device: Device, facts: RoomFacts, args: dict[str, Any]) -> Match | None:
     evidence: list[str] = []
+    clues: list[str] = []
     band: Band | None = None
     if any(s.kind == "tuya" for s in device.services):
         evidence.append("Sends Tuya / Smart Life broadcasts, so it is run through a cloud account")
+        clues.append("It sends Tuya / Smart Life broadcasts, which come from cloud-run devices.")
         band = "Likely"
     ports = device.identity.open_ports if device.identity else None
     if ports and 6668 in ports:
         evidence.append("Has the Tuya local-control port (6668) open")
+        clues.append("It has the Tuya local-control port (6668) open.")
         band = "Likely"
     for type_id in args.get("types", []):
-        found = _type_score(device, str(type_id))
+        found = _type_match(device, str(type_id))
         if found and found[0] >= float(args.get("min", 0.5)):
             evidence.append(f"Looks like a {found[3].lower()}: {found[1]}")
+            clues += _clues(found[2])
             band = band or found[1]
-    return Match(band=band, evidence=evidence) if band else None
+    return Match(band=band, evidence=evidence, clues=list(dict.fromkeys(clues))) if band else None
 
 
 def known_issues(device: Device, facts: RoomFacts, args: dict[str, Any]) -> Match | None:
@@ -248,6 +315,7 @@ def dhcp_servers(facts: RoomFacts, args: dict[str, Any]) -> Match | None:
 
 DEVICE_PREDICATES: dict[str, DevicePredicate] = {
     "type_score": type_score,
+    "new_since_baseline": new_since_baseline,
     "open_port": open_port,
     "cloud_link": cloud_link,
     "known_issues": known_issues,
@@ -289,17 +357,42 @@ def _field(name: str, d: Device) -> str | None:
 EVIDENCE_FIELDS = ("maker", "address", "open_ports", "notes", "identification")
 
 
+class LocationStep(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    step: str
+    draft: Draft = "host"
+
+
 class Rule(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     id: str
     scope: str
+    question: Question  # the renter's question it answers (Results and the report)
     when: dict[str, dict[str, Any]]
     severity: Severity | dict[str, Severity]
     title: str | dict[str, str]
+    observed: str | dict[str, str]  # what was seen, in one sentence
+    # What it could mean for the person, in one fixed sentence: the risk, never a repeat of
+    # what was observed.
+    could_mean: str | dict[str, str]
     next_step: str | dict[str, str]
+    # Next steps for a stay type; next_step is the default ("Other", or not listed).
+    next_step_by_stay: dict[StayType, str] = {}
     guidance: list[str] = []
+    guidance_by_stay: dict[StayType, list[str]] = {}  # guidance is the default
+    # Camera rules: the next step once the user says where it is, by stay type ("other"
+    # is the default), with the message the card offers for it.
+    next_step_by_location: dict[Location, dict[StayType, LocationStep]] = {}
     evidence_fields: list[str] = []
+    # Layer 5 standard text: used whenever the AI explanation isn't available or is rejected.
+    explanation: str | dict[str, str]
+    why_it_matters: str | dict[str, str]
+    landlord_question: str | dict[str, str] | None = None
+    # Nearby rules about the network you're connected to (its router or access point) are shown
+    # with your network on Results, not on Nearby.
+    about_your_network: bool = False
 
     @field_validator("when")
     @classmethod
@@ -339,11 +432,18 @@ class Rule(BaseModel):
         return value
 
 
+class QuestionSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    checks: list[str]  # the checks this question's status line depends on
+
+
 class RulesFile(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     cant_see: list[str]
     not_yet_checked: list[str] = []
+    questions: dict[Question, QuestionSpec]
     rules: list[Rule]
 
 
@@ -367,7 +467,12 @@ def load_rules(path: Path = RULES_FILE) -> RulesFile:
 # --- evaluation -------------------------------------------------------------------------------
 
 
-def _finding(rule: Rule, m: Match, device: Device | None) -> Finding:
+def _next_step(rule: Rule, m: Match, stay: StayType | None) -> str:
+    step = rule.next_step_by_stay.get(stay) if stay else None
+    return " ".join((step or rule.pick(rule.next_step, m.variant)).split())
+
+
+def _finding(rule: Rule, m: Match, device: Device | None, stay: StayType | None = None) -> Finding:
     evidence = list(m.evidence)
     if device is not None:
         evidence += [x for x in (_field(f, device) for f in rule.evidence_fields) if x]
@@ -381,14 +486,32 @@ def _finding(rule: Rule, m: Match, device: Device | None) -> Finding:
     return Finding(
         id=f"{rule.id}:{key}",
         rule_id=rule.id,
+        scope=rule.scope,  # type: ignore[arg-type]  # Rule._scope checks the value
+        shown_on="nearby" if rule.scope == "nearby" and not rule.about_your_network else "results",
+        question=rule.question,
         severity=rule.pick(rule.severity, m.variant),
         confidence_band=m.band,
         device_ref=ref,
         title=rule.pick(rule.title, m.variant),
+        observed=" ".join(rule.pick(rule.observed, m.variant).split()),
+        clues=list(m.clues),
+        lead_clue=m.lead_clue,
+        could_mean=" ".join(rule.pick(rule.could_mean, m.variant).split()),
         evidence=evidence,
-        next_step=" ".join(rule.pick(rule.next_step, m.variant).split()),
-        guidance=[" ".join(g.split()) for g in rule.guidance],
+        next_step=_next_step(rule, m, stay),
+        guidance=[
+            " ".join(g.split())
+            for g in (rule.guidance_by_stay.get(stay) if stay else None) or rule.guidance
+        ],
+        asks_location=bool(rule.next_step_by_location),
         nearby_ref=m.nearby_ref,
+        standard_explanation=" ".join(rule.pick(rule.explanation, m.variant).split()),
+        standard_why=" ".join(rule.pick(rule.why_it_matters, m.variant).split()),
+        landlord_question=(
+            " ".join(rule.pick(rule.landlord_question, m.variant).split())
+            if rule.landlord_question
+            else None
+        ),
     )
 
 
@@ -402,15 +525,15 @@ def evaluate(facts: RoomFacts, rules: RulesFile | None = None) -> list[Finding]:
             for d in facts.devices:
                 m = DEVICE_PREDICATES[name](d, facts, args)
                 if m is not None:
-                    findings.append(_finding(rule, m, d))
+                    findings.append(_finding(rule, m, d, facts.stay))
         elif rule.scope == "nearby":
             if facts.nearby is not None:
                 for m in NEARBY_PREDICATES[name](facts.nearby, args):
-                    findings.append(_finding(rule, m, None))
+                    findings.append(_finding(rule, m, None, facts.stay))
         else:
             m = NETWORK_PREDICATES[name](facts, args)
             if m is not None:
-                findings.append(_finding(rule, m, None))
+                findings.append(_finding(rule, m, None, facts.stay))
     order = {r.id: i for i, r in enumerate(rules.rules)}
     return sorted(findings, key=lambda f: (SEVERITY_ORDER[f.severity], order[f.rule_id]))
 
@@ -426,7 +549,7 @@ def summarise(
     elif medium:
         status = "Check these items"
     else:
-        status = "Nothing found by these checks"
+        status = "Not detected by these checks"
     not_checked = [
         f"{c.label}: {c.reason}" if c.reason else c.label for c in checks if c.status != "ran"
     ] + list(rules.not_yet_checked)
@@ -438,3 +561,18 @@ def summarise(
         not_checked=not_checked,
         cant_see=list(rules.cant_see),
     )
+
+
+def location_step(
+    rule_id: str, location: Location, stay: StayType | None, rules: RulesFile | None = None
+) -> LocationStep | None:
+    """The next step for a camera once the user says where it is, for their stay type."""
+    rules = rules or load_rules()
+    rule = next((r for r in rules.rules if r.id == rule_id), None)
+    if rule is None or location not in rule.next_step_by_location:
+        return None
+    by_stay = rule.next_step_by_location[location]
+    found = by_stay.get(stay or "other") or by_stay.get("other")
+    if found is None:
+        return None
+    return LocationStep(step=" ".join(found.step.split()), draft=found.draft)

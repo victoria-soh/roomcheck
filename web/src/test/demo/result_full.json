@@ -1,0 +1,838 @@
+{
+ "started_at": "2026-11-03T05:23:39Z",
+ "finished_at": "2026-11-03T05:24:49Z",
+ "mode": "full",
+ "network": {
+  "interface": "Wi-Fi",
+  "own_ip": "192.0.2.60",
+  "own_mac": "00:00:5e:00:53:60",
+  "gateway_ip": "192.0.2.1",
+  "netmask": "255.255.255.0",
+  "cidr": "192.0.2.0/24",
+  "prefixlen": 24,
+  "sweep_allowed": true
+ },
+ "devices": [
+  {
+   "id": "mac:00:00:5e:00:53:01",
+   "ip": "192.0.2.1",
+   "mac": "00:00:5e:00:53:01",
+   "mac_is_random": false,
+   "is_gateway": true,
+   "vendor": "Example Routers Ltd",
+   "hostnames": [],
+   "services": [
+    {
+     "kind": "ssdp",
+     "name": "urn:schemas-upnp-org:device:InternetGatewayDevice:1",
+     "detail": {
+      "location": "http://192.0.2.1:1900/rootDesc.xml"
+     }
+    }
+   ],
+   "sources": [
+    "arp_passive",
+    "arp_sweep",
+    "ssdp"
+   ],
+   "notes": [],
+   "first_seen": "2026-11-03T05:23:39Z",
+   "last_seen": "2026-11-03T05:23:39Z",
+   "identity": {
+    "open_ports": [
+     80,
+     443
+    ],
+    "ports_complete": true,
+    "http": [
+     {
+      "port": 80,
+      "scheme": "http",
+      "status": 200,
+      "server": null,
+      "title": "Login"
+     },
+     {
+      "port": 443,
+      "scheme": "http",
+      "status": 200,
+      "server": null,
+      "title": "Login"
+     }
+    ],
+    "rtsp": [],
+    "upnp": {
+     "manufacturer": "Example Routers Ltd",
+     "model_name": "ER-100",
+     "device_type": "urn:schemas-upnp-org:device:InternetGatewayDevice:1"
+    },
+    "problems": [],
+    "notes": []
+   },
+   "fingerprint": {
+    "type": "router",
+    "label": "Router or Wi-Fi access point",
+    "confidence": 0.8,
+    "band": "Likely",
+    "evidence": [
+     {
+      "signal": "is_gateway",
+      "weight": 0.6,
+      "text": "It is this network's gateway (where traffic leaves the network)",
+      "clue": "It is this network's router: traffic leaves the network through it.",
+      "plain_rank": 1
+     },
+     {
+      "signal": "upnp_igd",
+      "weight": 0.5,
+      "text": "Offers internet gateway controls (UPnP) (urn:schemas-upnp-org:device:InternetGatewayDevice:1)",
+      "clue": "It offers controls that let devices open internet ports (UPnP).",
+      "plain_rank": 4
+     }
+    ],
+    "other_types": [],
+    "weak_types": [],
+    "notes": [],
+    "identification": "full"
+   }
+  },
+  {
+   "id": "mac:02:00:5e:00:53:21",
+   "ip": "192.0.2.21",
+   "mac": "02:00:5e:00:53:21",
+   "mac_is_random": true,
+   "is_gateway": false,
+   "vendor": null,
+   "hostnames": [],
+   "services": [],
+   "sources": [
+    "arp_passive",
+    "arp_sweep"
+   ],
+   "notes": [
+    "Private address, probably a phone or laptop."
+   ],
+   "first_seen": "2026-11-03T05:23:39Z",
+   "last_seen": "2026-11-03T05:23:39Z",
+   "identity": {
+    "open_ports": [],
+    "ports_complete": true,
+    "http": [],
+    "rtsp": [],
+    "upnp": null,
+    "problems": [],
+    "notes": []
+   },
+   "fingerprint": {
+    "type": "computer_phone",
+    "label": "Computer or phone",
+    "confidence": 0.4,
+    "band": "Unclear",
+    "evidence": [
+     {
+      "signal": "private_mac",
+      "weight": 0.4,
+      "text": "Uses a private address, which phones and laptops do by default",
+      "clue": "It uses a private address, as phones and laptops do by default.",
+      "plain_rank": 3
+     }
+    ],
+    "other_types": [],
+    "weak_types": [],
+    "notes": [],
+    "identification": "full"
+   }
+  },
+  {
+   "id": "mac:00:00:5e:00:53:58",
+   "ip": "192.0.2.58",
+   "mac": "00:00:5e:00:53:58",
+   "mac_is_random": false,
+   "is_gateway": false,
+   "vendor": "Example Camera Co.",
+   "hostnames": [
+    "cam-hallway"
+   ],
+   "services": [
+    {
+     "kind": "onvif",
+     "name": "NetworkVideoTransmitter",
+     "detail": {
+      "types": "NetworkVideoTransmitter Device",
+      "scopes": "onvif://www.onvif.org/hardware/ExampleCam2 onvif://www.onvif.org/name/ExampleCam"
+     }
+    }
+   ],
+   "sources": [
+    "dhcp",
+    "arp_sweep",
+    "onvif"
+   ],
+   "notes": [],
+   "first_seen": "2026-11-03T05:23:39Z",
+   "last_seen": "2026-11-03T05:23:39Z",
+   "identity": {
+    "open_ports": [
+     80,
+     554,
+     8000
+    ],
+    "ports_complete": true,
+    "http": [
+     {
+      "port": 80,
+      "scheme": "http",
+      "status": 200,
+      "server": null,
+      "title": "Login"
+     },
+     {
+      "port": 8000,
+      "scheme": "http",
+      "status": 200,
+      "server": null,
+      "title": "Login"
+     }
+    ],
+    "rtsp": [
+     {
+      "port": 554,
+      "status": 401,
+      "server": "Example RTSP server"
+     }
+    ],
+    "upnp": null,
+    "problems": [],
+    "notes": []
+   },
+   "fingerprint": {
+    "type": "camera",
+    "label": "Camera",
+    "confidence": 0.902,
+    "band": "Likely",
+    "evidence": [
+     {
+      "signal": "onvif_nvt",
+      "weight": 0.6,
+      "text": "Answered a camera discovery request (ONVIF video transmitter)",
+      "clue": "It answers camera discovery requests (ONVIF).",
+      "plain_rank": 4
+     },
+     {
+      "signal": "rtsp_server",
+      "weight": 0.5,
+      "text": "Runs a video-streaming server (RTSP) (port 554)",
+      "clue": "It offers a live video stream, the kind security cameras use.",
+      "plain_rank": 1
+     },
+     {
+      "signal": "camera_ports",
+      "weight": 0.3,
+      "text": "Has a port open that camera recorders often use (port 8000)",
+      "clue": "It has a port open that camera recorders often use (port 8000).",
+      "plain_rank": 5
+     },
+     {
+      "signal": "camera_name",
+      "weight": 0.3,
+      "text": "Its name or model mentions a camera (cam-hallway)",
+      "clue": "It calls itself “cam-hallway”.",
+      "plain_rank": 2
+     }
+    ],
+    "other_types": [],
+    "weak_types": [],
+    "notes": [],
+    "identification": "full"
+   }
+  }
+ ],
+ "checks": [
+  {
+   "name": "passive_listen",
+   "label": "Listening for devices",
+   "status": "ran",
+   "reason": null,
+   "found": 3,
+   "short_reason": null
+  },
+  {
+   "name": "mdns",
+   "label": "Listening for devices that announce themselves",
+   "status": "ran",
+   "reason": null,
+   "found": 0,
+   "short_reason": null
+  },
+  {
+   "name": "arp_sweep",
+   "label": "Asking every address on this network to answer",
+   "status": "ran",
+   "reason": null,
+   "found": 3,
+   "short_reason": null
+  },
+  {
+   "name": "ssdp",
+   "label": "Asking devices on the network to identify themselves",
+   "status": "ran",
+   "reason": null,
+   "found": 1,
+   "short_reason": null
+  },
+  {
+   "name": "onvif",
+   "label": "Sending a camera discovery request (ONVIF)",
+   "status": "ran",
+   "reason": null,
+   "found": 1,
+   "short_reason": null
+  },
+  {
+   "name": "vendor_lookup",
+   "label": "Looking up who made each device",
+   "status": "ran",
+   "reason": null,
+   "found": 2,
+   "short_reason": null
+  },
+  {
+   "name": "port_check",
+   "label": "Checking which services each device offers",
+   "status": "ran",
+   "reason": null,
+   "found": 3,
+   "short_reason": null
+  },
+  {
+   "name": "identity_check",
+   "label": "Reading device names and models",
+   "status": "ran",
+   "reason": null,
+   "found": 2,
+   "short_reason": null
+  },
+  {
+   "name": "wifi_encryption",
+   "label": "Checking how your Wi-Fi connection is encrypted",
+   "status": "ran",
+   "reason": null,
+   "found": 1,
+   "short_reason": null
+  },
+  {
+   "name": "dns",
+   "label": "Checking whether web address lookups give the expected answers",
+   "status": "ran",
+   "reason": null,
+   "found": 2,
+   "short_reason": null
+  },
+  {
+   "name": "arp",
+   "label": "Watching which devices answer for the router",
+   "status": "ran",
+   "reason": null,
+   "found": 1,
+   "short_reason": null
+  },
+  {
+   "name": "dhcp",
+   "label": "Checking for a second device handing out network addresses",
+   "status": "failed",
+   "reason": "This step took too long and was stopped. The other steps still ran.",
+   "found": 0,
+   "short_reason": "the second-address-server check took too long and was stopped"
+  },
+  {
+   "name": "upnp",
+   "label": "Checking whether the router advertises UPnP controls",
+   "status": "ran",
+   "reason": null,
+   "found": 1,
+   "short_reason": null
+  },
+  {
+   "name": "cve",
+   "label": "Looking up known issues for identified models",
+   "status": "ran",
+   "reason": null,
+   "found": 1,
+   "short_reason": null
+  },
+  {
+   "name": "nearby_wifi",
+   "label": "Looking at nearby Wi-Fi",
+   "status": "ran",
+   "reason": null,
+   "found": 6,
+   "short_reason": null
+  },
+  {
+   "name": "bluetooth",
+   "label": "Listening for nearby Bluetooth devices and trackers",
+   "status": "ran",
+   "reason": null,
+   "found": 4,
+   "short_reason": null
+  },
+  {
+   "name": "lookalike",
+   "label": "Checking for other networks using your Wi-Fi's name",
+   "status": "ran",
+   "reason": null,
+   "found": 1,
+   "short_reason": null
+  },
+  {
+   "name": "wps",
+   "label": "Checking whether your Wi-Fi router advertises WPS",
+   "status": "ran",
+   "reason": null,
+   "found": 1,
+   "short_reason": null
+  }
+ ],
+ "client_isolation": false,
+ "messages": [],
+ "network_facts": {
+  "wifi": {
+   "interface": "Wi-Fi",
+   "ssid": "Example-Home",
+   "bssid": "00:00:5e:00:53:a1",
+   "authentication": "WPA2-Personal",
+   "cipher": "CCMP"
+  },
+  "dns": {
+   "random_name": "rc-demo-0001.example.com",
+   "nxdomain": true,
+   "random_name_answers": [],
+   "checked_domains": [
+    "example.org"
+   ],
+   "non_public_answers": {}
+  },
+  "dhcp_offers": null,
+  "arp_claims": [
+   {
+    "ip": "192.0.2.1",
+    "mac": "00:00:5e:00:53:01",
+    "vendor": "ICANN, IANA Department",
+    "first_seen": "2026-11-03T05:23:39Z",
+    "last_seen": "2026-11-03T05:23:39Z"
+   }
+  ],
+  "cves": {
+   "mac:00:00:5e:00:53:58": [
+    {
+     "model": "Example Cam 2",
+     "cpe": "cpe:2.3:o:example:example_cam_2_firmware",
+     "total": 1,
+     "cve_ids": [
+      "CVE-2099-0001"
+     ],
+     "exploited": []
+    }
+   ]
+  }
+ },
+ "findings": [
+  {
+   "id": "R-CAM:mac:00:00:5e:00:53:58",
+   "rule_id": "R-CAM",
+   "scope": "device",
+   "shown_on": "results",
+   "question": "watching",
+   "severity": "High",
+   "confidence_band": "Likely",
+   "device_ref": "mac:00:00:5e:00:53:58",
+   "title": "Likely camera",
+   "observed": "A device on this network gave camera-like clues, such as how it answers on the network.",
+   "clues": [
+    "It answers camera discovery requests (ONVIF).",
+    "It offers a live video stream, the kind security cameras use.",
+    "It has a port open that camera recorders often use (port 8000).",
+    "It calls itself “cam-hallway”."
+   ],
+   "lead_clue": "It offers a live video stream, the kind security cameras use.",
+   "could_mean": "If it is a camera where you stay, it could record you, and someone could watch what it records.",
+   "evidence": [
+    "Looks like a camera: Likely",
+    "Answered a camera discovery request (ONVIF video transmitter)",
+    "Runs a video-streaming server (RTSP) (port 554)",
+    "Has a port open that camera recorders often use (port 8000)",
+    "Its name or model mentions a camera (cam-hallway)",
+    "Maker: Example Camera Co.",
+    "Network address: 192.0.2.58",
+    "Open services on ports: 80, 554, 8000"
+   ],
+   "next_step": "Find it physically, then say where it is. Many platforms don't allow indoor cameras.",
+   "guidance": [
+    "Don't touch or unplug it. Photograph it where it is.",
+    "Leave if you feel unsafe.",
+    "Report it to the platform and the police.",
+    "Laws differ by country. This isn't legal advice."
+   ],
+   "asks_location": true,
+   "draft": "host",
+   "nearby_ref": null,
+   "standard_explanation": "A device on this network looks like a camera. It answers on the network the way cameras do, so it needs a closer look.",
+   "standard_why": "RoomCheck can't tell where the device is. If it is a camera where you stay, it could record you. You have a right to know where it is and who can watch it.",
+   "landlord_question": "I noticed a device on the Wi-Fi that looks like a camera. Could you tell me where it is, what it records and who can view it?",
+   "subject": "device:mac:f160e628013a95576dd77abe"
+  },
+  {
+   "id": "R-UPNP:network",
+   "rule_id": "R-UPNP",
+   "scope": "network",
+   "shown_on": "results",
+   "question": "wifi",
+   "severity": "Medium",
+   "confidence_band": "Likely",
+   "device_ref": "mac:00:00:5e:00:53:01",
+   "title": "Router offers UPnP controls for opening internet ports",
+   "observed": "The router advertises UPnP controls that let devices open internet ports.",
+   "clues": [],
+   "lead_clue": "",
+   "could_mean": "A device here could open itself to the internet without anyone approving it, where others might reach it.",
+   "evidence": [
+    "192.0.2.1 (Example Routers Ltd) offers internet gateway controls (UPnP), and it is this network's router"
+   ],
+   "next_step": "Ask the host whether UPnP can be turned off.",
+   "guidance": [],
+   "asks_location": false,
+   "draft": "host",
+   "nearby_ref": null,
+   "standard_explanation": "The router advertises UPnP, a feature that can let devices open connections from the internet by themselves, without anyone approving it.",
+   "standard_why": "A badly made camera or smart device could open itself to the internet, where others might reach it.",
+   "landlord_question": "Could UPnP be switched off on the router, unless something here needs it?",
+   "subject": "network:R-UPNP"
+  },
+  {
+   "id": "R-WPS:wifi:f270f4260f49b39ba817",
+   "rule_id": "R-WPS",
+   "scope": "nearby",
+   "shown_on": "results",
+   "question": "wifi",
+   "severity": "Medium",
+   "confidence_band": "Likely",
+   "device_ref": null,
+   "title": "Router advertises WPS",
+   "observed": "The router's Wi-Fi broadcast says WPS is on.",
+   "clues": [],
+   "lead_clue": "",
+   "could_mean": "Someone nearby could use WPS to get onto this Wi-Fi without the password.",
+   "evidence": [
+    "An access point called \"Example-Home\" (Example Routers Ltd, 5 GHz) advertises WPS",
+    "It lists PIN entry among its setup methods"
+   ],
+   "next_step": "Ask the host whether WPS can be switched off.",
+   "guidance": [],
+   "asks_location": false,
+   "draft": "host",
+   "nearby_ref": "wifi:f270f4260f49b39ba817",
+   "standard_explanation": "Your Wi-Fi router advertises WPS, a way for devices to join with a button press or a short PIN.",
+   "standard_why": "If PIN-based WPS is enabled, the PIN could be guessed by trying many codes, which could let someone join your Wi-Fi.",
+   "landlord_question": "Could WPS be switched off on the router?",
+   "subject": "wifi:f270f4260f49b39ba817924b"
+  },
+  {
+   "id": "R-TRACKER:bluetooth:tracker-1",
+   "rule_id": "R-TRACKER",
+   "scope": "nearby",
+   "shown_on": "nearby",
+   "question": "watching",
+   "severity": "Medium",
+   "confidence_band": "Possible",
+   "device_ref": null,
+   "title": "Item tracker nearby",
+   "observed": "An item tracker kept showing up nearby with a strong signal.",
+   "clues": [],
+   "lead_clue": "",
+   "could_mean": "A tracker you don't recognise could be used to follow where you go.",
+   "evidence": [
+    "Its Bluetooth signal matches the format of a Tile tracker (signature from AirGuard)",
+    "This tracker type doesn't show whether its owner is nearby",
+    "Heard with a strong signal in 3 of 3 scans (strongest -55 dBm)",
+    "If it belongs to you or someone you're with, this is expected"
+   ],
+   "next_step": "If it isn't yours, find it with the locator; a phone's built-in unknown-tracker alert gives a second opinion.",
+   "guidance": [],
+   "asks_location": false,
+   "draft": "host",
+   "nearby_ref": "bluetooth:tracker-1",
+   "standard_explanation": "An item tracker, such as a Tile, kept showing up nearby with a strong signal. This type doesn't show whether its owner is near.",
+   "standard_why": "A tracker you don't recognise could be used to follow where you go.",
+   "landlord_question": null,
+   "subject": "bluetooth:9a303221c56e28cda8e220c4"
+  },
+  {
+   "id": "R-HIDDEN:wifi:91447fef0afa6eba28ee",
+   "rule_id": "R-HIDDEN",
+   "scope": "nearby",
+   "shown_on": "nearby",
+   "question": "wifi",
+   "severity": "Low",
+   "confidence_band": "Likely",
+   "device_ref": null,
+   "title": "Hidden Wi-Fi network with a strong signal",
+   "observed": "A nearby Wi-Fi network hides its name and has a strong signal.",
+   "clues": [],
+   "lead_clue": "",
+   "could_mean": "It could be a second network from a router, or a device that doesn't show its name.",
+   "evidence": [
+    "A network that hides its name",
+    "Signal -55 dBm (strong), 2.4 GHz, channel 6",
+    "Security: WPA2",
+    "Maker: unknown"
+   ],
+   "next_step": "Often ordinary, since many routers hide a second network. Shown as context, and unconfirmed.",
+   "guidance": [],
+   "asks_location": false,
+   "draft": "host",
+   "nearby_ref": "wifi:91447fef0afa6eba28ee",
+   "standard_explanation": "A Wi-Fi network nearby hides its name, and its signal is strong.",
+   "standard_why": "Many routers hide a second network, so this is often ordinary. It is shown as context, and unconfirmed.",
+   "landlord_question": null,
+   "subject": "wifi:91447fef0afa6eba28ee8526"
+  },
+  {
+   "id": "R-CVE:mac:00:00:5e:00:53:58",
+   "rule_id": "R-CVE",
+   "scope": "device",
+   "shown_on": "results",
+   "question": "control",
+   "severity": "Info",
+   "confidence_band": "Possible",
+   "device_ref": "mac:00:00:5e:00:53:58",
+   "title": "Known issues reported for this model",
+   "observed": "Problems have been reported publicly for this device's model.",
+   "clues": [],
+   "lead_clue": "",
+   "could_mean": "If the device hasn't been updated, someone could use these reported problems to take control of it.",
+   "evidence": [
+    "Known issues reported for this model: the device reported \"Example Cam 2\", which matches NVD product \"example_cam_2_firmware\" with 1 reported issue(s), for example CVE-2099-0001",
+    "Maker: Example Camera Co.",
+    "Network address: 192.0.2.58"
+   ],
+   "next_step": "Known issues have been reported for this model. The exact firmware version can't be confirmed without logging in, so ask the host whether it has been updated recently.",
+   "guidance": [],
+   "asks_location": false,
+   "draft": "host",
+   "nearby_ref": null,
+   "standard_explanation": "Problems have been reported publicly for this model. The exact firmware version can't be confirmed without logging in, which RoomCheck never does.",
+   "standard_why": "If the device hasn't been updated, someone could use these problems to take control of it.",
+   "landlord_question": "Known issues have been reported for one of the devices here. Has it been updated recently?",
+   "subject": "device:mac:f160e628013a95576dd77abe"
+  },
+  {
+   "id": "R-OPEN:nearby",
+   "rule_id": "R-OPEN",
+   "scope": "nearby",
+   "shown_on": "nearby",
+   "question": "wifi",
+   "severity": "Info",
+   "confidence_band": "Likely",
+   "device_ref": null,
+   "title": "Open Wi-Fi networks nearby",
+   "observed": "Some nearby Wi-Fi networks have no password.",
+   "clues": [],
+   "lead_clue": "",
+   "could_mean": "Anything you send over these networks could be read by others, unless it is protected in another way.",
+   "evidence": [
+    "\"Free-Guest\" has no password (signal -79 dBm)"
+   ],
+   "next_step": "Don't use them for anything sensitive.",
+   "guidance": [],
+   "asks_location": false,
+   "draft": "host",
+   "nearby_ref": null,
+   "standard_explanation": "Some Wi-Fi networks nearby have no password.",
+   "standard_why": "Anything you send over them could be read by others, unless it is protected in another way.",
+   "landlord_question": null,
+   "subject": "nearby:scan:None"
+  }
+ ],
+ "stay_type": "short_stay",
+ "summary": {
+  "status": "Needs attention",
+  "high": 1,
+  "medium": 3,
+  "other": 3,
+  "not_checked": [
+   "Checking for a second device handing out network addresses: This step took too long and was stopped. The other steps still ran."
+  ],
+  "cant_see": [
+   "Cameras that join a hidden or separate network as ordinary clients, or that only record to a memory card and send nothing.",
+   "Devices on this network that stayed silent for the whole scan.",
+   "Who owns the account a cloud-linked device is paired to.",
+   "A device's exact firmware version. That would need logging in to it, which RoomCheck never does.",
+   "Cameras that join the host's network as ordinary clients broadcast nothing the nearby check can hear.",
+   "Network names, makers and tracker formats are unconfirmed: clues, not proof. The locator gives a rough area, not an exact spot."
+  ]
+ },
+ "nearby_items": [
+  {
+   "ref": "wifi:f270f4260f49b39ba817",
+   "kind": "wifi",
+   "label": "Wi-Fi network \"Example-Home\"",
+   "ssid": "Example-Home",
+   "maker": "Example Routers Ltd",
+   "security": "WPA2",
+   "band": "5 GHz",
+   "signal_dbm": -42,
+   "rule_ids": [
+    "R-WPS"
+   ],
+   "connected": true,
+   "match_key": "wifi:f270f4260f49b39ba817924b"
+  },
+  {
+   "ref": "wifi:91447fef0afa6eba28ee",
+   "kind": "wifi",
+   "label": "Hidden Wi-Fi network",
+   "ssid": null,
+   "maker": null,
+   "security": "WPA2",
+   "band": "2.4 GHz",
+   "signal_dbm": -55,
+   "rule_ids": [
+    "R-HIDDEN"
+   ],
+   "connected": false,
+   "match_key": "wifi:91447fef0afa6eba28ee8526"
+  },
+  {
+   "ref": "bluetooth:tracker-1",
+   "kind": "bluetooth",
+   "label": "Tile tracker",
+   "ssid": null,
+   "maker": null,
+   "security": null,
+   "band": null,
+   "signal_dbm": -55,
+   "rule_ids": [
+    "R-TRACKER"
+   ],
+   "connected": false,
+   "match_key": "bluetooth:9a303221c56e28cda8e220c4"
+  }
+ ],
+ "nearby_heard": {
+  "wifi_access_points": 6,
+  "bluetooth_devices": 4,
+  "bluetooth_by_category": {
+   "earbuds, headphones or speakers": 3,
+   "item trackers": 1
+  }
+ },
+ "room_network": "Example-Home",
+ "explanations": {
+  "items": [
+   {
+    "finding_id": "R-CAM:mac:00:00:5e:00:53:58",
+    "explanation": "A device on this network may be a camera.",
+    "why_it_matters": "A camera could record you. You have a right to know where it is.",
+    "source": "ai",
+    "label": "Explained by AI from the scan results. The risk level comes from fixed rules."
+   },
+   {
+    "finding_id": "R-UPNP:network",
+    "explanation": "The router lets devices on this network open connections from the internet by themselves.",
+    "why_it_matters": "A device could then be reached from outside without anyone noticing.",
+    "source": "ai",
+    "label": "Explained by AI from the scan results. The risk level comes from fixed rules."
+   },
+   {
+    "finding_id": "R-WPS:wifi:f270f4260f49b39ba817",
+    "explanation": "Your Wi-Fi router advertises WPS, a quick way to join the network.",
+    "why_it_matters": "If PIN-based WPS is enabled, the PIN could be guessed by trying many codes.",
+    "source": "ai",
+    "label": "Explained by AI from the scan results. The risk level comes from fixed rules."
+   },
+   {
+    "finding_id": "R-TRACKER:bluetooth:tracker-1",
+    "explanation": "An item tracker kept showing up nearby with a strong signal. Do you recognise this tracker?",
+    "why_it_matters": "A tracker you don't recognise could be used to follow where you go.",
+    "source": "ai",
+    "label": "Explained by AI from the scan results. The risk level comes from fixed rules."
+   },
+   {
+    "finding_id": "R-HIDDEN:wifi:91447fef0afa6eba28ee",
+    "explanation": "A Wi-Fi network nearby doesn't show its name, and its signal is strong.",
+    "why_it_matters": "Many routers hide a second network. It is worth asking what it is.",
+    "source": "ai",
+    "label": "Explained by AI from the scan results. The risk level comes from fixed rules."
+   },
+   {
+    "finding_id": "R-CVE:mac:00:00:5e:00:53:58",
+    "explanation": "Problems have been reported publicly for this camera's model. It isn't confirmed that they affect this device.",
+    "why_it_matters": "If its software is out of date, other people could get into it.",
+    "source": "ai",
+    "label": "Explained by AI from the scan results. The risk level comes from fixed rules."
+   },
+   {
+    "finding_id": "R-OPEN:nearby",
+    "explanation": "There are Wi-Fi networks nearby with no password.",
+    "why_it_matters": "Anything sent over them could be read by others nearby.",
+    "source": "ai",
+    "label": "Explained by AI from the scan results. The risk level comes from fixed rules."
+   }
+  ],
+  "landlord_message": {
+   "text": "Hello, I checked the room's devices and have a few questions. Could you tell me what the device that looks like a camera is, and who can view it? Could you also turn off WPS on the Wi-Fi router? Thank you.",
+   "source": "ai",
+   "label": "Drafted by AI from the scan results. Check it before you send it.",
+   "note": "RoomCheck never sends anything. Edit this message, then send it yourself.",
+   "covers": []
+  },
+  "ai_status": "used",
+  "ai_reason": null,
+  "ai_reason_text": null,
+  "ai_rejected": {}
+ },
+ "coverage": [
+  {
+   "area": "devices",
+   "label": "Finding devices on this network",
+   "state": "completed",
+   "reason": null,
+   "reason_code": null
+  },
+  {
+   "area": "services",
+   "label": "Identifying devices",
+   "state": "completed",
+   "reason": null,
+   "reason_code": null
+  },
+  {
+   "area": "router",
+   "label": "Checking the router and network",
+   "state": "limited",
+   "reason": "the second-address-server check took too long and was stopped",
+   "reason_code": "timeout"
+  },
+  {
+   "area": "known_issues",
+   "label": "Known-issue lookups",
+   "state": "completed",
+   "reason": null,
+   "reason_code": null
+  },
+  {
+   "area": "nearby_wifi",
+   "label": "Nearby Wi-Fi",
+   "state": "completed",
+   "reason": null,
+   "reason_code": null
+  },
+  {
+   "area": "bluetooth",
+   "label": "Bluetooth",
+   "state": "completed",
+   "reason": null,
+   "reason_code": null
+  }
+ ]
+}

@@ -1,7 +1,7 @@
 """Run the nearby check: Wi-Fi survey and Bluetooth scan side by side, each failing on its own.
 
-Data handling (PLAN.md, "Trust, privacy and legal safeguards"): the full survey, with raw
-BSSIDs and Bluetooth addresses, lives only in memory while the rules engine judges it.
+Data handling (docs/original-plan.md, "Trust, privacy and legal safeguards"): the full survey, with
+raw BSSIDs and Bluetooth addresses, lives only in memory while the rules engine judges it.
 `flagged_items` then keeps only items a rule flagged, referenced by salted hashes, plus
 counts of everything else. The survey itself is never returned, printed or saved.
 """
@@ -18,6 +18,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field
 
+from app.baseline.keys import nearby_key
 from app.checks.models import WifiStatus
 from app.discovery.merge import is_random_mac
 from app.discovery.messages import message_for
@@ -49,8 +50,8 @@ BleFn = Callable[[], list[list[BleAdvert]]]
 
 LABELS = {
     "nearby_wifi": "Looking at nearby Wi-Fi",
-    "lookalike": "Checking for copies of your Wi-Fi network",
-    "wps": "Checking whether your Wi-Fi router offers WPS",
+    "lookalike": "Checking for other networks using your Wi-Fi's name",
+    "wps": "Checking whether your Wi-Fi router advertises WPS",
     "bluetooth": "Listening for nearby Bluetooth devices and trackers",
     "on_network": "Checking devices on the network you joined",
 }
@@ -147,8 +148,10 @@ def collect_nearby(
     wifi_fn: WifiFn = collect_wifi,
     ble_fn: BleFn = collect_ble,
     salt: bytes = SESSION_SALT,
+    on_heard: Callable[[int | None, int | None], None] | None = None,
 ) -> tuple[NearbySurvey, list[CheckStatus], list[str]]:
-    """Run the Wi-Fi survey and the Bluetooth scan at the same time (about 30 s)."""
+    """Run the Wi-Fi survey and the Bluetooth scan at the same time (about 30 s). on_heard gets
+    the number of distinct Wi-Fi networks and Bluetooth devices as each part finishes."""
     survey = NearbySurvey()
     checks: list[CheckStatus] = []
     messages: list[str] = []
@@ -160,10 +163,13 @@ def collect_nearby(
             method, rounds = wifi_future.result()
             aps = aggregate_wifi(rounds, salt)
             if not any(rounds):
-                raise WirelessError("location_off")  # the list came back empty: PLAN.md
+                # The list came back empty: docs/original-plan.md
+                raise WirelessError("location_off")
             survey.access_points = aps
             survey.wifi_method = method
             checks.append(_status("nearby_wifi", "ran", found=len(aps)))
+            if on_heard:
+                on_heard(len(aps), None)
         except WirelessError as e:
             checks.append(_status("nearby_wifi", "failed", e.code))
             messages.append(message_for(e.code))
@@ -176,6 +182,9 @@ def collect_nearby(
             survey.ble_devices = ble.aggregate(ble_rounds, salt)
             survey.ble_rounds = len(ble_rounds)
             checks.append(_status("bluetooth", "ran", found=len(survey.ble_devices)))
+            if on_heard:
+                wifi = len(survey.access_points) if survey.access_points is not None else None
+                on_heard(wifi, len(survey.ble_devices))
         except WirelessError as e:
             checks.append(_status("bluetooth", "failed", e.code))
             messages.append(message_for(e.code))
@@ -204,7 +213,7 @@ def room_checks(survey: NearbySurvey) -> list[CheckStatus]:
 # --- what is kept ---------------------------------------------------------------------------
 
 
-def _wifi_item(ap: AccessPoint, rule_ids: list[str]) -> NearbyItem:
+def _wifi_item(ap: AccessPoint, rule_ids: list[str], connected: bool) -> NearbyItem:
     if ap.ssid:
         label = f'Wi-Fi network "{ap.ssid}"'
     else:
@@ -219,6 +228,7 @@ def _wifi_item(ap: AccessPoint, rule_ids: list[str]) -> NearbyItem:
         band=ap.band,
         signal_dbm=ap.rssi_dbm,
         rule_ids=rule_ids,
+        connected=connected,
     )
 
 
@@ -232,8 +242,11 @@ def _ble_item(d: BleDevice, rule_ids: list[str]) -> NearbyItem:
     )
 
 
-def flagged_items(survey: NearbySurvey, findings: list[Finding]) -> list[NearbyItem]:
-    """Only items a rule flagged. Everything else is dropped here."""
+def flagged_items(
+    survey: NearbySurvey, findings: list[Finding], match_salt: bytes | None = None
+) -> list[NearbyItem]:
+    """Only items a rule flagged. Everything else is dropped here. With match_salt, each item
+    also gets a match key (a salted hash of its address) for the move-in comparison."""
     rules_by_ref: dict[str, list[str]] = {}
     for f in findings:
         if f.nearby_ref:
@@ -241,12 +254,19 @@ def flagged_items(survey: NearbySurvey, findings: list[Finding]) -> list[NearbyI
             if f.rule_id not in rules_by_ref[f.nearby_ref]:
                 rules_by_ref[f.nearby_ref].append(f.rule_id)
     items: list[NearbyItem] = []
+    room_bssid = survey.room.bssid if survey.room else None
     for ap in survey.access_points or []:
         if ap.ref in rules_by_ref:
-            items.append(_wifi_item(ap, rules_by_ref[ap.ref]))
+            item = _wifi_item(ap, rules_by_ref[ap.ref], ap.bssid == room_bssid)
+            if match_salt is not None:
+                item.match_key = nearby_key("wifi", ap.bssid, match_salt)
+            items.append(item)
     for d in survey.ble_devices or []:
         if d.ref in rules_by_ref:
-            items.append(_ble_item(d, rules_by_ref[d.ref]))
+            item = _ble_item(d, rules_by_ref[d.ref])
+            if match_salt is not None:
+                item.match_key = nearby_key("bluetooth", d.address, match_salt)
+            items.append(item)
     return items
 
 

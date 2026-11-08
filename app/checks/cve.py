@@ -1,12 +1,13 @@
 """R-CVE input: known issues NVD lists for models a device reported about itself.
 
-Optional outside call (PLAN.md): only a maker word and a model name are sent, never IPs, MACs
-or network names. Two steps per model, both cached in SQLite:
+Optional outside call (docs/original-plan.md): only a maker word and a model name are sent, never
+IPs, MACs or network names. Two steps per model, both cached in SQLite:
   1. CPE API keyword search "<maker> <model>" to find NVD's product name for it.
   2. CVE API with virtualMatchString=cpe:2.3:<part>:<vendor>:<product>, so any firmware
      version matches. The exact version is usually unconfirmed, so results are phrased as
      "known issues reported for this model".
-Rate limits: 5 requests per 30 s, or 50 with NVD_API_KEY. A 403/503 skips the lookup.
+Rate limits: 5 requests per 30 s, or 50 with NVD_API_KEY (from .env or the environment).
+A 403/503 skips the lookup.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ import sqlite3
 import time
 from collections import deque
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 from urllib.parse import unquote
@@ -26,6 +27,7 @@ from urllib.parse import unquote
 import httpx
 
 from app.checks.models import CveMatch
+from app.config import Settings, get_settings
 from app.discovery.models import Device
 
 CPE_URL = "https://services.nvd.nist.gov/rest/json/cpes/2.0"
@@ -212,7 +214,7 @@ def summarise_cves(body: dict[str, Any]) -> tuple[int, list[str], list[str]]:
 class NvdClient:
     cache: CveCache
     limiter: RateLimiter
-    api_key: str | None = None
+    api_key: str | None = field(default=None, repr=False)  # never shown in logs
     transport: httpx.BaseTransport | None = None
     clock: Callable[[], float] = time.monotonic
 
@@ -285,8 +287,9 @@ class NvdClient:
         return matches
 
 
-def make_client(cache_path: Path | None = None) -> NvdClient:
-    api_key = os.environ.get("NVD_API_KEY") or None
+def make_client(cache_path: Path | None = None, settings: Settings | None = None) -> NvdClient:
+    secret = (settings or get_settings()).nvd_api_key
+    api_key = secret.get_secret_value() if secret else None
     limit = LIMIT_WITH_KEY if api_key else LIMIT_WITHOUT_KEY
     return NvdClient(
         cache=CveCache(cache_path or default_cache_path()),

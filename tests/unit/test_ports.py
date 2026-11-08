@@ -12,11 +12,11 @@ from tests.unit.devices import fixture
 
 NET = NetworkInfo(
     interface="Wi-Fi",
-    own_ip="192.168.68.60",
+    own_ip="192.0.2.60",
     own_mac=None,
-    gateway_ip="192.168.68.1",
+    gateway_ip="192.0.2.1",
     netmask="255.255.252.0",
-    cidr="192.168.68.0/22",
+    cidr="192.0.2.0/24",
     prefixlen=22,
     sweep_allowed=True,
 )
@@ -42,28 +42,26 @@ def test_job_accepts_no_parameters():
 
 
 def test_select_targets_stays_in_subnet():
-    swept = ["192.168.68.1", "192.168.68.60", "192.168.71.255", "10.0.0.5", "192.168.70.9"]
-    assert ports.select_targets(swept, NET.cidr, NET.own_ip) == ["192.168.68.1", "192.168.70.9"]
+    swept = ["192.0.2.1", "192.0.2.60", "192.0.2.255", "10.0.0.5", "192.0.2.9", "198.51.100.9"]
+    assert ports.select_targets(swept, NET.cidr, NET.own_ip) == ["192.0.2.1", "192.0.2.9"]
 
 
 def test_parse_scan_fixture():
     scan = json.loads(fixture("nmap_scan.json"))
-    out = ports.parse_scan(
-        scan, ["192.168.68.1", "192.168.68.64", "192.168.68.53", "192.168.68.77"]
-    )
+    out = ports.parse_scan(scan, ["192.0.2.1", "192.0.2.64", "192.0.2.53", "192.0.2.77"])
     assert out == [
-        {"ip": "192.168.68.1", "open_ports": [80, 443], "complete": True},
+        {"ip": "192.0.2.1", "open_ports": [80, 443], "complete": True},
         # 9999 isn't on the fixed list and 8554 is filtered, so neither is reported.
-        {"ip": "192.168.68.64", "open_ports": [80, 554, 8000], "complete": True},
-        {"ip": "192.168.68.53", "open_ports": [], "complete": True},
+        {"ip": "192.0.2.64", "open_ports": [80, 554, 8000], "complete": True},
+        {"ip": "192.0.2.53", "open_ports": [], "complete": True},
         # Missing from nmap's output, e.g. skipped after --host-timeout.
-        {"ip": "192.168.68.77", "open_ports": [], "complete": False},
+        {"ip": "192.0.2.77", "open_ports": [], "complete": False},
     ]
 
 
 def test_parse_scan_junk():
-    assert ports.parse_scan({"scan": "junk"}, ["192.168.68.1"])[0]["complete"] is False
-    assert ports.parse_scan(None, ["192.168.68.1"])[0]["complete"] is False  # type: ignore[arg-type]
+    assert ports.parse_scan({"scan": "junk"}, ["192.0.2.1"])[0]["complete"] is False
+    assert ports.parse_scan(None, ["192.0.2.1"])[0]["complete"] is False  # type: ignore[arg-type]
 
 
 def test_nmap_missing(monkeypatch):
@@ -94,14 +92,14 @@ def fake_nmap(monkeypatch):
 
 
 def test_port_scan_targets_only_hosts_scannerd_swept(fake_nmap):
-    session.record_swept(["192.168.68.1", "192.168.68.64", "192.168.68.60"])
+    session.record_swept(["192.0.2.1", "192.0.2.64", "192.0.2.60"])
     out = ports.port_scan(ports.PortScanParams())
     [(path, hosts, port_list, args)] = fake_nmap.calls
     assert path == (r"C:\Nmap\nmap.exe",)
-    assert hosts == "192.168.68.1 192.168.68.64"  # own laptop excluded
+    assert hosts == "192.0.2.1 192.0.2.64"  # own laptop excluded
     assert port_list == ports.PORT_LIST
     assert args == ports.NMAP_ARGUMENTS
-    assert [r["ip"] for r in out] == ["192.168.68.1", "192.168.68.64"]
+    assert [r["ip"] for r in out] == ["192.0.2.1", "192.0.2.64"]
 
 
 def test_port_scan_without_a_sweep_scans_nothing(fake_nmap):
@@ -110,14 +108,14 @@ def test_port_scan_without_a_sweep_scans_nothing(fake_nmap):
 
 
 def test_new_sweep_replaces_old_hosts(fake_nmap):
-    session.record_swept(["192.168.68.20"])
-    session.record_swept(["192.168.68.1"])
+    session.record_swept(["192.0.2.20"])
+    session.record_swept(["192.0.2.1"])
     ports.port_scan(ports.PortScanParams())
-    assert fake_nmap.calls[0][1] == "192.168.68.1"
+    assert fake_nmap.calls[0][1] == "192.0.2.1"
 
 
 def test_nmap_timeout_and_errors(monkeypatch, fake_nmap):
-    session.record_swept(["192.168.68.1"])
+    session.record_swept(["192.0.2.1"])
 
     def raising(exc):
         class S(FakeScanner):

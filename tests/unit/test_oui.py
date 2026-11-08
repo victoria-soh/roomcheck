@@ -8,14 +8,14 @@ def test_bundled_list_is_present_and_large():
 
 
 def test_lookup_known_vendors():
-    assert lookup_vendor("38:42:0B:42:C1:84") == "Sonos, Inc."
+    assert lookup_vendor("38:42:0B:00:00:84") == "Sonos, Inc."
     assert lookup_vendor("cc-ba-bd-00-00-01") == "TP-Link Systems Inc."
     assert "Hikvision" in lookup_vendor("00:bc:99:aa:bb:cc")
 
 
 def test_private_mac_has_no_vendor():
     # 0x3A has the locally administered bit set; even if a prefix existed it isn't used.
-    assert lookup_vendor("3a:42:0b:42:c1:84") is None
+    assert lookup_vendor("3a:00:5e:00:53:84") is None
     assert lookup_vendor("da:a1:19:20:30:40") is None
 
 

@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 import time
 from collections.abc import Callable, Sequence
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Literal
@@ -17,7 +17,13 @@ from typing import Literal
 from app.discovery import mdns, onvif, ssdp
 from app.discovery.merge import detect_client_isolation, merge_observations
 from app.discovery.messages import message_for
-from app.discovery.models import CheckStatus, DiscoveryResult, NetworkInfo, Observation
+from app.discovery.models import (
+    CheckStatus,
+    Device,
+    DiscoveryResult,
+    NetworkInfo,
+    Observation,
+)
 from app.discovery.netinfo import NoNetworkError, get_network_info
 from app.scanner import Scanner, ScannerError
 
@@ -25,6 +31,11 @@ log = logging.getLogger(__name__)
 
 Mode = Literal["full", "passive"]
 DEFAULT_DURATION_SECONDS = 60
+# The worker ends the sweep by its own budget and returns what it heard; the app waits this
+# much longer for the reply, so it never gives up on a sweep that's still within its budget.
+SWEEP_REPLY_MARGIN_SECONDS = 15.0
+# Called as each collector finishes: its status and the number of devices seen so far.
+CollectorDone = Callable[[CheckStatus, int], None]
 
 
 @dataclass(frozen=True)
@@ -41,17 +52,24 @@ def _via_scanner(
 ) -> Callable[[NetworkInfo], list[Observation]]:
     def run(_net: NetworkInfo) -> list[Observation]:
         if scanner is None:
-            raise ScannerError("scanner_unavailable")
+            raise ScannerError("scanner_not_started")
         raw = scanner.run(job, params, timeout)
         return [Observation.model_validate(o) for o in raw or []]
 
     return run
 
 
+def sweep_budget(duration_seconds: float, gap: float) -> float:
+    """The sweep's own time limit: the listening window it runs inside (the listen step waits
+    for that anyway), and never less than the gap plus time for two passes."""
+    return min(90.0, max(gap + 25.0, float(duration_seconds)))
+
+
 def default_collectors(
     scanner: Scanner | None, duration_seconds: float = DEFAULT_DURATION_SECONDS
 ) -> list[Collector]:
     gap = min(20.0, max(0.0, duration_seconds - 5))
+    budget = sweep_budget(duration_seconds, gap)
     return [
         Collector(
             "passive_listen",
@@ -75,17 +93,22 @@ def default_collectors(
             "Asking every address on this network to answer",
             active=True,
             sweep=True,
-            run=_via_scanner(scanner, "arp_sweep", {"gap_seconds": gap}, gap + 30),
+            run=_via_scanner(
+                scanner,
+                "arp_sweep",
+                {"gap_seconds": gap, "budget_seconds": budget},
+                budget + SWEEP_REPLY_MARGIN_SECONDS,
+            ),
         ),
         Collector(
             "ssdp",
-            "Asking smart devices to identify themselves",
+            "Asking devices on the network to identify themselves",
             active=True,
             run=ssdp.search,
         ),
         Collector(
             "onvif",
-            "Asking cameras to identify themselves",
+            "Sending a camera discovery request (ONVIF)",
             active=True,
             run=onvif.probe,
         ),
@@ -117,6 +140,7 @@ def run_discovery(
     *,
     get_network: Callable[[], NetworkInfo] = get_network_info,
     clock: Callable[[], float] = time.monotonic,
+    on_collector: CollectorDone | None = None,
 ) -> DiscoveryResult:
     started_at = datetime.now(UTC)
     start = clock()
@@ -146,21 +170,28 @@ def run_discovery(
         else:
             to_run.append(c)
 
-    observations: list[Observation] = []
+    def merged(observations: list[Observation]) -> list[Device]:
+        return merge_observations(
+            observations,
+            gateway_ip=net.gateway_ip,
+            exclude_ips=[net.own_ip],
+            exclude_macs=[net.own_mac] if net.own_mac else [],
+        )
+
+    found_by: dict[str, list[Observation]] = {}
     if to_run:
         with ThreadPoolExecutor(max_workers=len(to_run)) as pool:
-            for c, (status, found) in zip(
-                to_run, pool.map(lambda c: _run_one(c, net), to_run), strict=True
-            ):
-                statuses[c.name] = status
-                observations.extend(found)
+            futures = {pool.submit(_run_one, c, net): c for c in to_run}
+            for future in as_completed(futures):
+                c = futures[future]
+                statuses[c.name], found_by[c.name] = future.result()
+                if on_collector is not None:
+                    so_far = [o for f in found_by.values() for o in f]
+                    on_collector(statuses[c.name], len(merged(so_far)))
 
-    devices = merge_observations(
-        observations,
-        gateway_ip=net.gateway_ip,
-        exclude_ips=[net.own_ip],
-        exclude_macs=[net.own_mac] if net.own_mac else [],
-    )
+    # Merged in collector order, whatever order they finished in.
+    observations = [o for c in to_run for o in found_by[c.name]]
+    devices = merged(observations)
     sweep_ran = any(c.sweep and statuses[c.name].status == "ran" for c in collectors)
     isolation = detect_client_isolation(
         devices,

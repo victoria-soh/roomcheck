@@ -222,12 +222,12 @@ def build_bss_list(entries: list[tuple[str, bytes, int, int, bytes]]) -> ctypes.
 def test_decode_bss_list_reads_entries_and_ies():
     buf = build_bss_list(
         [
-            ("cc:ba:bd:ac:94:d9", b"HomeNet", -40, 5220000, hexfile("wpa2_psk_wps.hex")),
+            ("cc:ba:bd:00:10:d9", b"HomeNet", -40, 5220000, hexfile("wpa2_psk_wps.hex")),
             ("9a:3b:4c:00:11:22", b"", -55, 2437000, hexfile("hidden_blank.hex")),
         ]
     )
     raw = wlanapi.decode_bss_list(ctypes.addressof(buf))
-    assert [r.bssid for r in raw] == ["cc:ba:bd:ac:94:d9", "9a:3b:4c:00:11:22"]
+    assert [r.bssid for r in raw] == ["cc:ba:bd:00:10:d9", "9a:3b:4c:00:11:22"]
     readings = [wlanapi.reading_from_raw(r) for r in raw]
     home, hidden = readings
     assert (home.ssid, home.rssi_dbm, home.frequency_mhz, home.channel) == (
@@ -242,7 +242,7 @@ def test_decode_bss_list_reads_entries_and_ies():
 
 def test_decode_bss_list_never_reads_past_total_size():
     buf = build_bss_list(
-        [("cc:ba:bd:ac:94:d9", b"HomeNet", -40, 5220000, hexfile("wpa2_psk_wps.hex"))]
+        [("cc:ba:bd:00:10:d9", b"HomeNet", -40, 5220000, hexfile("wpa2_psk_wps.hex"))]
     )
     lst = wlanapi.WLAN_BSS_LIST.from_buffer(buf)
     lst.dwNumberOfItems = 50  # lies about the count

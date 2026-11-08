@@ -40,9 +40,9 @@ def mdns(name, **txt):
 def sonos():
     """Matches the Sonos speaker seen on the user's network in the Layer 1 live run."""
     return make(
-        "192.168.68.53",
-        "38:42:0b:42:c1:84",
-        hostnames=["Sonos-38420B42C184.local"],
+        "192.0.2.53",
+        "38:42:0b:00:00:84",
+        hostnames=["Sonos-38420B000084.local"],
         services=[
             mdns("_sonos._tcp"),
             mdns("_spotify-connect._tcp"),
@@ -55,7 +55,7 @@ def sonos():
 
 def macbook():
     return make(
-        "192.168.68.54",
+        "192.0.2.54",
         "00:0a:95:12:34:56",  # Apple, Inc. prefix
         hostnames=["MacBook-Air-3.local"],
         services=[mdns("_airplay._tcp"), mdns("_raop._tcp"), mdns("_rfb._tcp"), mdns("_smb._tcp")],
@@ -65,10 +65,10 @@ def macbook():
 
 def windows_laptop():
     return make(
-        "192.168.68.70",
+        "192.0.2.70",
         "da:a1:19:20:30:40",
         random=True,
-        hostnames=["DESKTOP-4KQ2M1"],
+        hostnames=["DESKTOP-EXAMPLE1"],
         services=[Service(kind="dhcp", name="dhcp-client", detail={"vendor_class": "MSFT 5.0"})],
         identity=Identity(open_ports=[]),
     )
@@ -76,7 +76,7 @@ def windows_laptop():
 
 def hikvision_camera():
     return make(
-        "192.168.68.64",
+        "192.0.2.64",
         "00:bc:99:aa:bb:cc",  # Hangzhou Hikvision prefix
         services=[
             Service(
@@ -98,7 +98,7 @@ def hikvision_camera():
 def phone_ip_camera_app():
     """An old phone running an IP-camera app (the demo's stand-in camera)."""
     return make(
-        "192.168.68.80",
+        "192.0.2.80",
         "aa:bb:cc:00:11:22",  # 0xAA has the local bit set: private address
         random=True,
         identity=Identity(
@@ -111,7 +111,7 @@ def phone_ip_camera_app():
 
 def tp_link_gateway():
     return make(
-        "192.168.68.1",
+        "192.0.2.1",
         "cc:ba:bd:00:00:01",
         gateway=True,
         services=[Service(kind="ssdp", name="urn:schemas-upnp-org:device:InternetGatewayDevice:1")],

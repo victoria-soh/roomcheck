@@ -1,8 +1,37 @@
+# Python
 .venv/
 __pycache__/
 *.pyc
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# Node and the dashboard build (built locally: npm --prefix web run build)
 node_modules/
 dist/
+
+# Frontend test output
+test-results/
+playwright-report/
+blob-report/
+coverage/
+
+# Local configuration with API keys (see .env.example)
+.env
+.env.*
+!.env.example
+
+# Local data, logs and report outputs, in case any land in the project folder. RoomCheck itself
+# keeps its saved data and reports in %LOCALAPPDATA%\RoomCheck, outside this folder.
+*.log
+*.db
+*.db-journal
+*.sqlite
+*.sqlite*
+*.sqlite3
+roomcheck-report-*
+/reports/

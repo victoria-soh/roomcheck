@@ -1,0 +1,126 @@
+{
+ "state": "ready",
+ "baseline": {
+  "state": "saved",
+  "saved_at": "2026-11-03T05:30:00Z",
+  "devices": 6,
+  "nearby": 0,
+  "message": null
+ },
+ "comparison": {
+  "baseline_saved_at": "2026-11-03T05:30:00Z",
+  "scan_at": "2026-11-20T09:00:00Z",
+  "baseline_mode": "full",
+  "scan_mode": "passive",
+  "new": [
+   {
+    "kind": "device",
+    "status": "new",
+    "match": null,
+    "label": "Camera",
+    "maker": "Example Camera Co.",
+    "changes": [],
+    "findings": [
+     {
+      "rule_id": "R-NEW-CAMERA",
+      "severity": "High",
+      "title": "Camera-like device that appeared since your move-in scan"
+     },
+     {
+      "rule_id": "R-CAM",
+      "severity": "Medium",
+      "title": "Possible camera"
+     }
+    ],
+    "device_ref": "mac:00:00:5e:00:53:58",
+    "subject": "device:mac:f160e628013a95576dd77abe",
+    "match_id": null,
+    "decision": null,
+    "band": null,
+    "identification_varied": false
+   }
+  ],
+  "gone": [
+   {
+    "kind": "device",
+    "status": "gone",
+    "match": null,
+    "label": "Smart speaker",
+    "maker": null,
+    "changes": [],
+    "findings": [],
+    "device_ref": null,
+    "subject": "device:mac:ffbf3bc148a1e136151abcca",
+    "match_id": null,
+    "decision": null,
+    "band": null,
+    "identification_varied": false
+   }
+  ],
+  "changed": [
+   {
+    "kind": "device",
+    "status": "changed",
+    "match": "exact",
+    "label": "Smart plug or switch",
+    "maker": "Example Plugs",
+    "changes": [
+     "New finding: Cloud-linked smart device"
+    ],
+    "findings": [
+     {
+      "rule_id": "R-CLOUD",
+      "severity": "Medium",
+      "title": "Cloud-linked smart device"
+     }
+    ],
+    "device_ref": "mac:00:00:5e:00:53:42",
+    "subject": "device:mac:56bd365ae6d5a21ed8101ee0",
+    "match_id": null,
+    "decision": null,
+    "band": "Unclear",
+    "identification_varied": false
+   }
+  ],
+  "unchanged": 3,
+  "unchanged_possible": 1,
+  "possible": [
+   {
+    "kind": "device",
+    "status": "unchanged",
+    "match": "possible",
+    "label": "Computer or phone",
+    "maker": null,
+    "changes": [],
+    "findings": [],
+    "device_ref": "mac:02:00:5e:00:53:23",
+    "subject": "device:soft:85497fd71e390be6edde40e7",
+    "match_id": "soft:85497fd71e390be6edde40e7>device:soft:85497fd71e390be6edde40e7",
+    "decision": null,
+    "band": "Possible",
+    "identification_varied": false
+   }
+  ],
+  "varied": [
+   {
+    "kind": "device",
+    "status": "unchanged",
+    "match": "exact",
+    "label": "TV or streaming stick",
+    "maker": "Example Screens Ltd",
+    "changes": [],
+    "findings": [],
+    "device_ref": "mac:00:00:5e:00:53:40",
+    "subject": "device:mac:94ed201e697e7c0c5c06cf96",
+    "match_id": null,
+    "decision": null,
+    "band": "Likely",
+    "identification_varied": true
+   }
+  ],
+  "not_compared": 1,
+  "ran_differently": true,
+  "warnings": [],
+  "not_checked": []
+ }
+}

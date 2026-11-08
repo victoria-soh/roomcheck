@@ -1,0 +1,17 @@
+{
+ "answers": {},
+ "confirmed": {},
+ "locations": {},
+ "names": {},
+ "notes": {},
+ "adjusted": {},
+ "tasks": [],
+ "message": null,
+ "saved": false,
+ "storage": "saved",
+ "physical": {
+  "items": {},
+  "done_at": null
+ },
+ "storage_reason": null
+}

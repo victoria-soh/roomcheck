@@ -15,11 +15,11 @@ from tests.unit import devices as dev
 T = datetime(2026, 11, 2, 12, 0, tzinfo=UTC)
 NET = NetworkInfo(
     interface="Wi-Fi",
-    own_ip="192.168.68.60",
+    own_ip="192.168.1.60",
     own_mac="c4:0f:08:11:22:33",
-    gateway_ip="192.168.68.1",
+    gateway_ip="192.168.1.1",
     netmask="255.255.252.0",
-    cidr="192.168.68.0/22",
+    cidr="192.168.0.0/22",
     prefixlen=22,
     sweep_allowed=True,
 )
@@ -117,15 +117,15 @@ def test_consent_runs_dhcp_probe_with_no_parameters():
     scanner = FakeScanner(
         [
             {
-                "server_id": "192.168.68.1",
-                "server_mac": "cc:ba:bd:ac:94:d8",
-                "offered_ip": "192.168.68.60",
+                "server_id": "192.168.1.1",
+                "server_mac": "cc:ba:bd:00:10:d8",
+                "offered_ip": "192.168.1.60",
             }
         ]
     )
     facts, checks, _ = go(result(), scanner=scanner)
     assert scanner.calls == [("dhcp_probe", {})]
-    assert facts.dhcp_offers[0].server_id == "192.168.68.1"
+    assert facts.dhcp_offers[0].server_id == "192.168.1.1"
     assert statuses(checks)["dhcp"] == "ran"
 
 
@@ -175,26 +175,26 @@ def test_arp_needs_the_listener():
 
 def test_gateway_claims_track_first_and_last_sighting_per_mac():
     obs = [
-        Observation(source="arp_passive", seen_at=T, ip="192.168.68.1", mac="cc:ba:bd:ac:94:d8"),
+        Observation(source="arp_passive", seen_at=T, ip="192.168.1.1", mac="cc:ba:bd:00:10:d8"),
         Observation(
             source="arp_sweep",
             seen_at=T.replace(minute=1),
-            ip="192.168.68.1",
-            mac="CC-BA-BD-AC-94-D8",
+            ip="192.168.1.1",
+            mac="CC-BA-BD-00-10-D8",
         ),
         Observation(
             source="arp_passive",
             seen_at=T.replace(minute=2),
-            ip="192.168.68.1",
+            ip="192.168.1.1",
             mac="02:11:22:33:44:55",
         ),
-        Observation(source="arp_passive", seen_at=T, ip="192.168.68.53", mac="38:42:0b:42:c1:84"),
-        Observation(source="dhcp", seen_at=T, ip="192.168.68.1", mac="aa:aa:aa:aa:aa:aa"),
+        Observation(source="arp_passive", seen_at=T, ip="192.168.1.53", mac="38:42:0b:00:00:84"),
+        Observation(source="dhcp", seen_at=T, ip="192.168.1.1", mac="aa:aa:aa:aa:aa:aa"),
     ]
     claims = {c.mac: c for c in gateway_claims(result(observations=obs))}
-    assert set(claims) == {"cc:ba:bd:ac:94:d8", "02:11:22:33:44:55"}
-    assert claims["cc:ba:bd:ac:94:d8"].vendor == "TP-Link Systems Inc."
-    assert claims["cc:ba:bd:ac:94:d8"].last_seen == T.replace(minute=1)
+    assert set(claims) == {"cc:ba:bd:00:10:d8", "02:11:22:33:44:55"}
+    assert claims["cc:ba:bd:00:10:d8"].vendor == "TP-Link Systems Inc."
+    assert claims["cc:ba:bd:00:10:d8"].last_seen == T.replace(minute=1)
     assert claims["02:11:22:33:44:55"].vendor is None
 
 
@@ -222,7 +222,7 @@ def test_cve_no_models_offline_and_rate_limited():
     )
     assert (statuses(checks)["cve"], reasons(checks)["cve"]) == (
         "skipped",
-        "Vulnerability lookup skipped for now.",
+        "Not checked: the vulnerability database didn't answer this time.",
     )
 
 

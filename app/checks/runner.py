@@ -29,10 +29,10 @@ NVD_BUDGET_SECONDS = 35.0
 
 LABELS = {
     "wifi_encryption": "Checking how your Wi-Fi connection is encrypted",
-    "dns": "Checking that web addresses are looked up honestly",
+    "dns": "Checking whether web address lookups give the expected answers",
     "arp": "Watching which devices answer for the router",
     "dhcp": "Checking for a second device handing out network addresses",
-    "upnp": "Checking whether the router lets devices open internet ports",
+    "upnp": "Checking whether the router advertises UPnP controls",
     "cve": "Looking up known issues for identified models",
 }
 
@@ -129,7 +129,7 @@ def run_network_checks(
     else:
         try:
             if scanner is None:
-                raise ScannerError("scanner_unavailable")
+                raise ScannerError("scanner_not_started")
             raw = scanner.run("dhcp_probe", {}, DHCP_JOB_TIMEOUT_SECONDS) or []
             facts.dhcp_offers = [DhcpOffer.model_validate(o) for o in raw]
             if facts.dhcp_offers:

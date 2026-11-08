@@ -37,7 +37,7 @@ from app.wireless.wlanapi import WirelessError
 log = logging.getLogger(__name__)
 
 BLE_ROUNDS = 3
-BLE_ROUND_SECONDS = 10.0  # 3 rounds of 10 s: the 30 s scan from PLAN.md
+BLE_ROUND_SECONDS = 10.0  # 3 rounds of 10 s: the 30 s scan from docs/original-plan.md
 
 APPLE = 0x004C
 MICROSOFT = 0x0006

@@ -275,7 +275,7 @@ def camera_hotspot(s: NearbySurvey, args: dict[str, Any]) -> list[Match]:
             continue
         if ap.ssid is None:
             evidence.append("It hides its network name")
-        evidence += [_signal(ap), "Names and makers are hints, not proof"]
+        evidence += [_signal(ap)]
         out.append(Match(band="Possible", evidence=evidence, nearby_ref=ap.ref))
     return out
 
@@ -340,8 +340,10 @@ def wps_enabled(s: NearbySurvey, args: dict[str, Any]) -> list[Match]:
             evidence.append("It lists PIN entry among its setup methods")
         if wps.ap_setup_locked:
             evidence.append("It says PIN entry is locked for now, which can reset after a restart")
-    strongest = max(aps, key=lambda a: a.rssi_dbm)
-    return [Match(band="Likely", evidence=evidence, nearby_ref=strongest.ref)]
+    # Point at the access point you're connected to when it's one of them, else the strongest.
+    room_bssid = s.room.bssid if s.room else None
+    chosen = next((a for a in aps if a.bssid == room_bssid), max(aps, key=lambda a: a.rssi_dbm))
+    return [Match(band="Likely", evidence=evidence, nearby_ref=chosen.ref)]
 
 
 def _strong_rounds(d: BleDevice, min_rssi: int) -> set[int]:

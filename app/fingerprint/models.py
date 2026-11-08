@@ -45,6 +45,8 @@ class Evidence(BaseModel):
     signal: str
     weight: float
     text: str
+    clue: str = ""  # one plain sentence for "What we observed" (weights.yaml `clue`)
+    plain_rank: int = 5  # 1: the plainest clue (weights.yaml); picks the summary's clue only
 
 
 class TypeScore(BaseModel):

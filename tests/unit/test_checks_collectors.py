@@ -11,6 +11,7 @@ from scapy.layers.l2 import Ether
 
 from app.checks import cve, dns, wifi
 from app.checks.models import WifiStatus
+from app.config import load_settings
 from scannerd.jobs import dhcp as dhcp_job
 from scannerd.server import default_jobs, handle_request
 
@@ -30,7 +31,7 @@ def test_wpa2_connection_is_read_and_not_weak():
     assert s == WifiStatus(
         interface="Wi-Fi",
         ssid="HomeNet",
-        bssid="cc:ba:bd:ac:94:d9",
+        bssid="02:00:00:00:10:d9",
         authentication="WPA2-Personal",
         cipher="CCMP",
     )
@@ -156,7 +157,7 @@ def test_unclear_dns_is_not_tampered():
 OWN_MAC = "c4:0f:08:11:22:33"
 
 
-def offer(server_id, server_mac, xid, yiaddr="192.168.68.60", msg="offer"):
+def offer(server_id, server_mac, xid, yiaddr="192.168.1.60", msg="offer"):
     pkt = (
         Ether(src=server_mac, dst="ff:ff:ff:ff:ff:ff")
         / IP(src=server_id, dst="255.255.255.255")
@@ -181,17 +182,17 @@ def test_parse_offers_counts_distinct_servers():
     xid = 42
     offers = dhcp_job.parse_offers(
         [
-            offer("192.168.68.1", "cc:ba:bd:ac:94:d8", xid),
-            offer("192.168.68.1", "cc:ba:bd:ac:94:d8", xid),  # duplicate
-            offer("192.168.68.250", "02:00:00:00:00:66", xid),
+            offer("192.168.1.1", "cc:ba:bd:00:10:d8", xid),
+            offer("192.168.1.1", "cc:ba:bd:00:10:d8", xid),  # duplicate
+            offer("192.168.1.250", "02:00:00:00:00:66", xid),
             offer("10.9.9.9", "02:00:00:00:00:77", xid + 1),  # another transaction
-            offer("192.168.68.1", "cc:ba:bd:ac:94:d8", xid, msg="ack"),  # not an offer
+            offer("192.168.1.1", "cc:ba:bd:00:10:d8", xid, msg="ack"),  # not an offer
         ],
         xid,
     )
     assert [(o["server_id"], o["server_mac"]) for o in offers] == [
-        ("192.168.68.1", "cc:ba:bd:ac:94:d8"),
-        ("192.168.68.250", "02:00:00:00:00:66"),
+        ("192.168.1.1", "cc:ba:bd:00:10:d8"),
+        ("192.168.1.250", "02:00:00:00:00:66"),
     ]
 
 
@@ -333,14 +334,14 @@ def test_rate_limited_nvd_raises_unavailable(tmp_path, status):
     client.cache.close()
 
 
-def test_no_api_key_means_low_rate_limit(monkeypatch, tmp_path):
-    monkeypatch.delenv("NVD_API_KEY", raising=False)
-    c = cve.make_client(tmp_path / "a.sqlite3")
+def test_no_api_key_means_low_rate_limit(tmp_path):
+    no_file = tmp_path / "missing.env"
+    c = cve.make_client(tmp_path / "a.sqlite3", load_settings(no_file, environ={}))
     assert c.limiter.limit == 5 and c.api_key is None
     c.cache.close()
-    monkeypatch.setenv("NVD_API_KEY", "k")
-    c = cve.make_client(tmp_path / "b.sqlite3")
-    assert c.limiter.limit == 50
+    c = cve.make_client(tmp_path / "b.sqlite3", load_settings(no_file, {"NVD_API_KEY": "k"}))
+    assert c.limiter.limit == 50 and c.api_key == "k"
+    assert "api_key" not in repr(c)  # the key is hidden from the dataclass repr
     c.cache.close()
 
 

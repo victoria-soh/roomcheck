@@ -1,16 +1,28 @@
 # Layer 3 and Layer 4 rules, judged by app/rules/engine.py (pure functions, no I/O).
 #
 # Each rule:
-#   id              rule ID from PLAN.md
+#   id              rule ID from docs/original-plan.md
 #   scope           device (one finding per matching device), network (at most one finding),
 #                   or nearby (Layer 4: one finding per flagged access point or Bluetooth device)
 #   when            exactly one named predicate from engine.PREDICATES, with its arguments
 #   severity        a severity, or a map from the predicate's variant to a severity
 #   title / next_step  text, or a map by variant
+#   observed        one plain sentence saying what was seen, true whenever the rule fires.
+#                   The Results screen's summary and short cards use it (never AI text).
 #   guidance        extra steps shown under the next step
 #   evidence_fields device facts added after the predicate's own evidence
+#   about_your_network  true for nearby rules about the network you're connected to (its own
+#                   router or access point): shown under "This network" on Results, not Nearby
+#   next_step_by_stay  next steps for a stay type (short_stay, rental, hostel), chosen on Start;
+#                   next_step is the default, for "Other" and anything not listed
+#   guidance_by_stay   guidance for a stay type; guidance is the default
+#   next_step_by_location  camera rules: next steps once the user says where it is (inside,
+#                   outside, unknown), by stay type with "other" as the default, and which
+#                   message the card offers (draft: host or platform)
+#   question        which of the renter's questions on Results and in the report it answers:
+#                   watching, control or wifi (see `questions` below)
 #
-# Severities and next steps follow PLAN.md. Wording never tells the user a device or room is fine;
+# Severities and next steps follow docs/original-plan.md. Wording never tells the user a device or room is fine;
 # a test checks this file for reassuring words.
 
 cant_see:
@@ -19,176 +31,464 @@ cant_see:
   - Who owns the account a cloud-linked device is paired to.
   - A device's exact firmware version. That would need logging in to it, which RoomCheck never does.
   - Cameras that join the host's network as ordinary clients broadcast nothing the nearby check can hear.
-  - Network names, makers and tracker formats are hints, not proof. The locator gives a rough area, not an exact spot.
+  - "Network names, makers and tracker formats are unconfirmed: clues, not proof. The locator gives a rough area, not an exact spot."
 
 not_yet_checked: []
+
+# The renter's questions that Results and the report are organised by, in order. `checks` are
+# the checks whose results each question's status line depends on: "Not detected by the checks
+# that ran" needs at least one of them to have run, and any that didn't are named as Not
+# checked. The fourth question, "What's changed since move-in?", comes from Compare, not from
+# rules. The wording is in web/src/strings/en.json (results.questions).
+questions:
+  watching:
+    checks: [passive_listen, mdns, arp_sweep, ssdp, onvif, port_check, identity_check, nearby_wifi, bluetooth]
+  control:
+    checks: [passive_listen, mdns, arp_sweep, ssdp, vendor_lookup, port_check, identity_check, cve]
+  wifi:
+    checks: [wifi_encryption, dns, arp, dhcp, upnp, nearby_wifi, lookalike, wps]
 
 rules:
   - id: R-CAM
     scope: device
+    question: watching
     when: {type_score: {type: camera, min: 0.5}}
     severity: {Likely: High, Possible: Medium}
     title: {Likely: Likely camera, Possible: Possible camera}
-    next_step: >-
-      Find it physically. Ask the host or landlord where it is and who can view it.
-      In a short stay, check the platform's camera disclosure rules.
+    observed: "A device on this network gave camera-like clues, such as how it answers on the network."
+    could_mean: "If it is a camera where you stay, it could record you, and someone could watch what it records."
+    next_step: Find it physically, then say where it is.
+    next_step_by_stay:
+      short_stay: Find it physically, then say where it is. Many platforms don't allow indoor cameras.
+      rental: >-
+        Find it physically, then say where it is. Your tenancy agreement may say whether cameras
+        are allowed.
+      hostel: Find it physically, then say where it is.
+    # After "Where is it?" (Results, Do you recognise this device?): next steps by the answer
+    # and the stay type. draft: which message the card offers, to the host (the default) or a
+    # report to the platform.
+    next_step_by_location:
+      inside:
+        short_stay:
+          step: Many platforms don't allow indoor cameras. Report it to the platform and keep your evidence.
+          draft: platform
+        rental:
+          step: >-
+            Check what your tenancy agreement says about cameras, and ask the host in writing
+            why it's there, who can view it, and to remove it or switch it off. Keep your evidence.
+        hostel:
+          step: Report it to the front desk or management, and keep your evidence.
+        other:
+          step: Ask the host why it's there and who can view it, and keep your evidence.
+      outside:
+        short_stay:
+          step: >-
+            Check the listing for a disclosed camera. If it isn't disclosed, ask the host what
+            it records and who can view it.
+        rental:
+          step: >-
+            Check your tenancy agreement for a disclosed camera. If it isn't disclosed, ask the
+            host what it records and who can view it.
+        hostel:
+          step: >-
+            Ask the front desk or management whether the camera is disclosed, what it records and
+            who can view it.
+        other:
+          step: >-
+            Check the listing or tenancy agreement for a disclosed camera. If it isn't disclosed,
+            ask the host what it records and who can view it.
+      unknown:
+        hostel:
+          step: Ask the front desk or management what it is, where it is and who can view it.
+        other:
+          step: Ask the host what it is, where it is and who can view it.
+    # Who to report a hidden camera to depends on where you're staying (Start).
     guidance:
-      - "If you find a hidden camera, don't destroy or unplug it yet. Photograph it where it is."
-      - Leave the space if you feel unsafe.
-      - >-
-        Report it to the booking platform and the police. Secret recording in private spaces
-        is a criminal offence in Singapore and many other countries.
+      - "Don't touch or unplug it. Photograph it where it is."
+      - Leave if you feel unsafe.
+      - Report it to the host and the police.
+      - "Laws differ by country. This isn't legal advice."
+    guidance_by_stay:
+      short_stay:
+        - "Don't touch or unplug it. Photograph it where it is."
+        - Leave if you feel unsafe.
+        - Report it to the platform and the police.
+        - "Laws differ by country. This isn't legal advice."
+      rental:
+        - "Don't touch or unplug it. Photograph it where it is."
+        - Leave if you feel unsafe.
+        - Report it to the host or the landlord's agent, and the police.
+        - "Laws differ by country. This isn't legal advice."
+      hostel:
+        - "Don't touch or unplug it. Photograph it where it is."
+        - Leave if you feel unsafe.
+        - Report it to the management and the police.
+        - "Laws differ by country. This isn't legal advice."
     evidence_fields: [maker, address, open_ports, notes, identification]
+    explanation: "A device on this network looks like a camera. It answers on the network the way cameras do, so it needs a closer look."
+    why_it_matters: "RoomCheck can't tell where the device is. If it is a camera where you stay, it could record you. You have a right to know where it is and who can watch it."
+    landlord_question: "I noticed a device on the Wi-Fi that looks like a camera. Could you tell me where it is, what it records and who can view it?"
+
+  - id: R-NEW-CAMERA
+    scope: device
+    question: watching
+    when: {new_since_baseline: {type: camera, min: 0.5}}
+    severity: High
+    title: Camera-like device that appeared since your move-in scan
+    observed: "A camera-like device joined this network after your move-in scan."
+    could_mean: "A camera that appeared after you moved in could record you without you knowing."
+    next_step: Find it physically, then say where it is. It wasn't there at your move-in scan.
+    next_step_by_stay:
+      short_stay: >-
+        Find it physically, then say where it is. Many platforms don't allow indoor cameras.
+      rental: >-
+        Find it physically, then say where it is. It wasn't there when you moved in, so check
+        your tenancy agreement.
+      hostel: Find it physically, then say where it is.
+    # After "Where is it?" (Results, Do you recognise this device?): next steps by the answer
+    # and the stay type. draft: which message the card offers, to the host (the default) or a
+    # report to the platform.
+    next_step_by_location:
+      inside:
+        short_stay:
+          step: Many platforms don't allow indoor cameras. Report it to the platform and keep your evidence.
+          draft: platform
+        rental:
+          step: >-
+            Check what your tenancy agreement says about cameras, and ask the host in writing
+            what it is, who can view it, and to remove it or switch it off. Keep your evidence.
+        hostel:
+          step: Report it to the front desk or management, and keep your evidence.
+        other:
+          step: Ask the host what it is and who can view it, and keep your evidence.
+      outside:
+        short_stay:
+          step: >-
+            Check the listing for a disclosed camera. If it isn't disclosed, ask the host what
+            it records and who can view it.
+        rental:
+          step: >-
+            Check your tenancy agreement for a disclosed camera. If it isn't disclosed, ask the
+            host what it records and who can view it.
+        hostel:
+          step: >-
+            Ask the front desk or management whether the camera is disclosed, what it records and
+            who can view it.
+        other:
+          step: >-
+            Check the listing or tenancy agreement for a disclosed camera. If it isn't disclosed,
+            ask the host what it records and who can view it.
+      unknown:
+        hostel:
+          step: Ask the front desk or management what it is, where it is and who can view it.
+        other:
+          step: Ask the host what it is, where it is and who can view it.
+    # Who to report a hidden camera to depends on where you're staying (Start).
+    guidance:
+      - "Don't touch or unplug it. Photograph it where it is."
+      - Leave if you feel unsafe.
+      - Report it to the host and the police.
+      - "Laws differ by country. This isn't legal advice."
+    guidance_by_stay:
+      short_stay:
+        - "Don't touch or unplug it. Photograph it where it is."
+        - Leave if you feel unsafe.
+        - Report it to the platform and the police.
+        - "Laws differ by country. This isn't legal advice."
+      rental:
+        - "Don't touch or unplug it. Photograph it where it is."
+        - Leave if you feel unsafe.
+        - Report it to the host or the landlord's agent, and the police.
+        - "Laws differ by country. This isn't legal advice."
+      hostel:
+        - "Don't touch or unplug it. Photograph it where it is."
+        - Leave if you feel unsafe.
+        - Report it to the management and the police.
+        - "Laws differ by country. This isn't legal advice."
+    evidence_fields: [maker, address, open_ports, identification]
+    explanation: "A device that looks like a camera is on this network now, but wasn't in your move-in scan. It needs a closer look."
+    why_it_matters: "A camera that appeared after you moved in could record you. You have a right to know what it is and who can watch it."
+    landlord_question: "A device that looks like a camera has joined the Wi-Fi since I moved in. Could you tell me what it is, where it is and who can view it?"
 
   - id: R-LOCK
     scope: device
+    question: control
     when: {type_score: {type: lock_doorbell, min: 0.5}}
     severity: High
     title: Smart lock or doorbell
+    observed: "A device on this network looks like a smart lock or video doorbell."
+    could_mean: "People added before you moved in could still unlock the door or see who comes and goes."
     next_step: >-
-      Ask the landlord to remove previous users and codes in the lock's app, and confirm in
+      Ask the host to remove previous users and codes in the lock's app, and confirm in
       writing.
+    next_step_by_stay:
+      short_stay: >-
+        Ask the host to confirm that codes are changed between guests and that no one else can
+        unlock the door while you stay. If they can't, tell the platform.
+      rental: >-
+        Ask the host in writing to remove previous users and codes in the lock's app, and to
+        confirm when it's done. Keep the reply with your tenancy agreement.
+      hostel: >-
+        Ask the front desk or management who can unlock the door and how codes are changed
+        between guests.
     evidence_fields: [maker, address, identification]
+    explanation: "This device looks like a smart lock or video doorbell. These are run through an app and an online account."
+    why_it_matters: "People added before you moved in may still be able to unlock the door, or see who comes and goes."
+    landlord_question: "Could you remove previous users and codes from the smart lock, and confirm in writing when that's done?"
 
   - id: R-CLOUD
     scope: device
+    question: control
     when: {cloud_link: {types: [smart_plug, hub], min: 0.5}}
     severity: Medium
     title: Cloud-linked smart device
+    observed: "A device on this network appears to be run through an online account, such as Tuya or Smart Life."
+    could_mean: "Whoever holds its account could control the device or see when it is used, from anywhere."
     next_step: >-
       Ask who controls the account. A long-term tenant can ask to factory-reset it and pair it
       to their own account.
+    next_step_by_stay:
+      short_stay: >-
+        Ask the host who controls the account and whether it can see when the device is used
+        while you stay.
+      rental: >-
+        Ask the host in writing who controls the account, and whether it can be reset so you
+        can pair it to your own account. Check your tenancy agreement for shared devices.
+      hostel: >-
+        Ask the front desk or management who controls the account and what it can see.
     evidence_fields: [maker, address]
+    explanation: "This smart device appears to be run through an online account, such as Tuya or Smart Life. Whoever holds that account can control it."
+    why_it_matters: "Someone outside your home may be able to switch it on or off, or see when it is used."
+    landlord_question: "Who controls the account for the smart devices here? Could other users be removed, or the device reset so I can pair it to my own account?"
 
   - id: R-TELNET
     scope: device
+    question: control
     when: {open_port: {port: 23, service: Telnet}}
     severity: High
     title: Device offers Telnet
+    observed: "A device on this network accepts Telnet logins, which send passwords unencrypted."
+    could_mean: "Anyone on this network could try to log in to the device and take control of it."
     next_step: >-
-      Don't use that device. Report it to the landlord. Telnet sends logins unencrypted and is
+      Don't use that device. Report it to the host. Telnet sends logins unencrypted and is
       a common IoT weakness.
     evidence_fields: [maker, address, open_ports]
+    explanation: "This device offers Telnet, an old way to log in to it from another computer. Telnet sends passwords without any encryption."
+    why_it_matters: "Telnet is a common way into weak smart devices. Anyone on the network could try to take control of it."
+    landlord_question: "One device on the network has Telnet switched on. Could you check what it is, and switch Telnet off or replace the device?"
 
   - id: R-WIFI-ENC
     scope: network
+    question: wifi
     when: {wifi_weak: {}}
     severity: High
     title: Wi-Fi without proper encryption
-    next_step: Assume traffic can be read. Use a VPN or mobile data until the landlord fixes it.
+    observed: "Your Wi-Fi connection uses no encryption, or old WEP encryption."
+    could_mean: "People nearby could read what you send over this Wi-Fi, unless it is protected in another way."
+    next_step: Treat what you send as readable by people nearby. Use a VPN or mobile data until the host fixes it.
+    explanation: "Your Wi-Fi connection uses no encryption, or very old encryption called WEP. People nearby could read what is sent over it."
+    why_it_matters: "Passwords and messages that aren't protected in another way could be read by people nearby."
+    landlord_question: "The Wi-Fi seems to have no password, or uses old WEP security. Could it be switched to WPA2 or WPA3 with a password?"
 
   - id: R-UPNP
     scope: network
+    question: wifi
     when: {upnp_igd: {}}
     severity: Medium
-    title: Router lets devices open internet ports (UPnP)
-    next_step: >-
-      Devices can open ports to the internet without asking. Ask for UPnP to be disabled.
+    title: Router offers UPnP controls for opening internet ports
+    observed: "The router advertises UPnP controls that let devices open internet ports."
+    could_mean: "A device here could open itself to the internet without anyone approving it, where others might reach it."
+    next_step: Ask the host whether UPnP can be turned off.
+    explanation: "The router advertises UPnP, a feature that can let devices open connections from the internet by themselves, without anyone approving it."
+    why_it_matters: "A badly made camera or smart device could open itself to the internet, where others might reach it."
+    landlord_question: "Could UPnP be switched off on the router, unless something here needs it?"
 
   - id: R-DNS
     scope: network
+    question: wifi
     when: {dns_tampered: {}}
     severity: High
-    title: Web address lookups look tampered with
-    next_step: Don't log in to anything important on this network. Tell the landlord.
+    title: Web address lookups gave unexpected answers
+    observed: "Web address lookups on this network gave answers they shouldn't give."
+    could_mean: "Something could be sending you to fake websites that look real and collect what you type."
+    next_step: Something may be changing them. Until you know, don't log in to anything important on this network, and tell the host.
+    explanation: "Web address lookups on this network gave answers they shouldn't give. Something may be changing them."
+    why_it_matters: "Changed lookups can send you to fake websites that look real and collect what you type."
+    landlord_question: "Web address lookups on the Wi-Fi gave unexpected answers. Could you check the router's DNS settings, or ask someone to look at it?"
 
   - id: R-ARP
     scope: network
+    question: wifi
     when: {gateway_claimed_twice: {}}
     severity: {different_makers: High, same_maker_flip_flop: High, same_maker: Medium}
     title:
       different_makers: More than one device answers for the router
       same_maker_flip_flop: The device answering for the router keeps switching
       same_maker: Two devices from the router's maker answer for the router
+    observed: "More than one device answered for the router's address during the check."
+    could_mean: "A device pretending to be the router could see or change your traffic."
     next_step:
       different_makers: Possible interception. Disconnect and use mobile data.
       same_maker_flip_flop: Possible interception. Disconnect and use mobile data.
       same_maker: >-
-        A mesh system or a router with two network ports can cause this, so ask the landlord
+        A mesh system or a router with two network ports can cause this, so ask the host
         before assuming the worst. Until you know, avoid logging in to anything important.
+    explanation:
+      different_makers: "More than one device answered for the router's address during the scan. Normally only the router does that."
+      same_maker_flip_flop: "Two devices took turns answering for the router's address during the scan. Normally only the router does that."
+      same_maker: "Two devices from the router's maker answered for the router's address. A mesh system or a router with two network ports can do this."
+    why_it_matters:
+      different_makers: "A device pretending to be the router could see or change your traffic."
+      same_maker_flip_flop: "A device pretending to be the router could see or change your traffic."
+      same_maker: "There may be an ordinary reason. A device pretending to be the router could see or change your traffic, so it is worth asking."
+    landlord_question: "During a check, more than one device answered for the router's address. Is there a mesh system or a second router here?"
 
   - id: R-DHCP
     scope: network
+    question: wifi
     when: {dhcp_servers: {min: 2}}
     severity: High
-    title: More than one device hands out network addresses
-    next_step: Possible rogue router. Report it to the landlord.
+    title: More than one device offered network addresses
+    observed: "More than one device offered to hand out network addresses."
+    could_mean: "A second router could send your traffic through itself, where it could be watched."
+    next_step: Possible rogue router. Report it to the host.
+    explanation: "More than one device offered to hand out network addresses. Normally only the router does that."
+    why_it_matters: "A second router could be set up to send your traffic through it, where it could be watched."
+    landlord_question: "Two devices on the network offered to hand out addresses. Is there a second router or extender here that I should know about?"
 
   - id: R-CVE
     scope: device
+    question: control
     when: {known_issues: {}}
     severity: {exploited: Medium, reported: Info}
     title: Known issues reported for this model
+    observed: "Problems have been reported publicly for this device's model."
+    could_mean: "If the device hasn't been updated, someone could use these reported problems to take control of it."
     next_step: >-
       Known issues have been reported for this model. The exact firmware version can't be
-      confirmed without logging in, so ask the landlord whether it has been updated recently.
+      confirmed without logging in, so ask the host whether it has been updated recently.
     evidence_fields: [maker, address]
+    explanation: "Problems have been reported publicly for this model. The exact firmware version can't be confirmed without logging in, which RoomCheck never does."
+    why_it_matters:
+      exploited: "Some of these problems are known to be used in real attacks. If the device isn't up to date, someone could use them to take control of it."
+      reported: "If the device hasn't been updated, someone could use these problems to take control of it."
+    landlord_question: "Known issues have been reported for one of the devices here. Has it been updated recently?"
 
   # --- Layer 4: nearby Wi-Fi and Bluetooth (only public broadcasts; nothing is connected to) ---
 
   - id: R-TWIN
     scope: nearby
+    question: wifi
     when: {weaker_twin: {}}
     severity: High
     title: Copy of your Wi-Fi name with weaker security
+    observed: "A nearby network uses your Wi-Fi's exact name, with weaker security."
+    could_mean: "Your devices could be tricked into joining the copy, where someone could watch or change your traffic."
     next_step: >-
-      Don't connect to it. It may be set up to intercept traffic. Ask the landlord which
+      Don't connect to it. It may be set up to intercept traffic. Ask the host which
       network is genuine.
+    explanation: "Another Wi-Fi network uses exactly your network's name, but with weaker security or no password."
+    why_it_matters: "A copy like this can trick your devices into joining it. Then someone could watch or change your traffic."
+    landlord_question: "I noticed a second Wi-Fi network with the same name as this one, but without proper security. Is it one of yours?"
 
   - id: R-TWIN-VENDOR
     scope: nearby
+    question: wifi
     when: {twin_other_maker: {min_rssi: -60}}
     severity: Medium
     title: Possible lookalike of your Wi-Fi
+    observed: "A nearby access point uses your Wi-Fi's name but comes from a different maker."
+    could_mean: "If someone else set it up, it could be used to watch your traffic. A mesh system or extender can also look like this."
     next_step: >-
       Possible lookalike. Mesh systems and extenders can explain this, so ask before assuming.
+    explanation: "Another access point uses your network's name and security, but comes from a different maker than the rest."
+    why_it_matters: "Mesh systems and extenders can explain this. A copy set up by someone else could watch your traffic, so it is worth asking."
+    landlord_question: "I saw an access point using this Wi-Fi's name, but from a different brand than the router. Is there an extender or mesh unit like that here?"
 
   - id: R-TWIN-DOWNGRADE
     scope: nearby
+    question: wifi
     when: {downgrade_twin: {min_rssi: -60}}
     severity: Medium
     title: Possible downgrade lookalike of your Wi-Fi
+    observed: "A nearby access point uses your Wi-Fi's name but only offers older WPA2 security."
+    could_mean: "A copy like this could be used to pull your devices onto older, weaker security."
     next_step: >-
       Possible lookalike that only offers older WPA2 security, which can be used to pull
-      devices off WPA3. Phone hotspots and extenders can explain this, so ask the landlord
+      devices off WPA3. Phone hotspots and extenders can explain this, so ask the host
       before assuming.
+    explanation: "Another access point uses your network's name, but only offers older WPA2 security. Your network also offers newer WPA3."
+    why_it_matters: "A copy like this can be used to pull devices off WPA3. Phone hotspots and extenders can also look like this."
+    landlord_question: "Is there an extender or another access point using this Wi-Fi's name with older WPA2-only security?"
 
   - id: R-WPS
     scope: nearby
+    question: wifi
+    about_your_network: true  # only the room network's own access points
     when: {wps_enabled: {}}
     severity: Medium
-    title: Your Wi-Fi router offers WPS
-    next_step: Ask the landlord to switch WPS off (it is open to PIN brute-forcing).
+    title: Router advertises WPS
+    observed: "The router's Wi-Fi broadcast says WPS is on."
+    could_mean: "Someone nearby could use WPS to get onto this Wi-Fi without the password."
+    # The PIN risk is said once, in why_it_matters; the next step only says what to ask (B4).
+    next_step: "Ask the host whether WPS can be switched off."
+    explanation: "Your Wi-Fi router advertises WPS, a way for devices to join with a button press or a short PIN."
+    why_it_matters: "If PIN-based WPS is enabled, the PIN could be guessed by trying many codes, which could let someone join your Wi-Fi."
+    landlord_question: "Could WPS be switched off on the router?"
 
   - id: R-CAMHOT
     scope: nearby
+    question: watching
     when: {camera_hotspot: {}}
     severity: Medium
     title: Possible camera setup hotspot
+    observed: "A nearby Wi-Fi network's name or maker matches what cameras use for setup."
+    could_mean: "A camera that is being set up could be nearby."
     next_step: >-
       A camera may be broadcasting its own network. Use the locator to see where it's
       strongest, then ask the host.
+    explanation: "A nearby Wi-Fi network looks like one a camera makes for its own setup. Its name or maker matches what cameras use."
+    why_it_matters: "A camera may be nearby. Names are easy to change, so it is worth finding where the signal is strongest."
+    landlord_question: "I noticed a Wi-Fi network that looks like a camera's setup network. Is there a camera in or near the room?"
 
   - id: R-TRACKER
     scope: nearby
+    question: watching
     when: {tracker_repeated: {min_rounds: 2, min_rssi: -70}}
     severity: Medium
-    title: Possible item tracker that isn't yours
+    # Never say whose it is: RoomCheck can't know. Ask whether the user recognises it.
+    title: "Item tracker nearby"
+    observed: "An item tracker kept showing up nearby with a strong signal."
+    could_mean: "A tracker you don't recognise could be used to follow where you go."
     next_step: >-
-      An item tracker is nearby and doesn't seem to belong to you. Find it with the locator;
-      a phone's built-in unknown-tracker alert gives a second opinion.
+      If it isn't yours, find it with the locator; a phone's built-in unknown-tracker alert
+      gives a second opinion.
+    explanation:
+      separated: "An item tracker, such as an AirTag, kept showing up nearby with a strong signal. Its signal format says it is away from its owner."
+      unknown: "An item tracker, such as a Tile, kept showing up nearby with a strong signal. This type doesn't show whether its owner is near."
+    why_it_matters: "A tracker you don't recognise could be used to follow where you go."
 
   - id: R-HIDDEN
     scope: nearby
+    question: wifi
     when: {hidden_strong: {min_rssi: -60}}
     severity: Low
     title: Hidden Wi-Fi network with a strong signal
+    observed: "A nearby Wi-Fi network hides its name and has a strong signal."
+    could_mean: "It could be a second network from a router, or a device that doesn't show its name."
     next_step: >-
-      Often harmless, since many routers hide a second network. Shown as context, not proof.
+      Often ordinary, since many routers hide a second network. Shown as context, and unconfirmed.
+    explanation: "A Wi-Fi network nearby hides its name, and its signal is strong."
+    why_it_matters: "Many routers hide a second network, so this is often ordinary. It is shown as context, and unconfirmed."
 
   - id: R-OPEN
     scope: nearby
+    question: wifi
     when: {open_nearby: {max_listed: 10}}
     severity: Info
     title: Open Wi-Fi networks nearby
+    observed: "Some nearby Wi-Fi networks have no password."
+    could_mean: "Anything you send over these networks could be read by others, unless it is protected in another way."
     next_step: Don't use them for anything sensitive.
+    explanation: "Some Wi-Fi networks nearby have no password."
+    why_it_matters: "Anything you send over them could be read by others, unless it is protected in another way."

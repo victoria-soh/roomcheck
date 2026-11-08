@@ -6,6 +6,7 @@ stdin closes (the app closed it or exited).
 
 from __future__ import annotations
 
+import logging
 import sys
 import threading
 
@@ -19,6 +20,8 @@ def main() -> int:
         return 2
     if len(authkey) < 32:
         return 2
+    # To stderr, which shows in RoomCheck's terminal. stdout carries only the PORT line.
+    logging.basicConfig(level=logging.INFO, format="scannerd: %(message)s", stream=sys.stderr)
     server = Server(authkey)
     print(f"PORT {server.address[1]}", flush=True)
     threading.Thread(target=server.serve_forever, daemon=True).start()

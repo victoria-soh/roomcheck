@@ -23,7 +23,7 @@ OPEN = make_security("open")
 CONNECTED = WifiStatus(
     interface="Wi-Fi",
     ssid="HomeNet",
-    bssid="cc:ba:bd:ac:94:d9",
+    bssid="cc:ba:bd:00:10:d9",
     authentication="WPA2-Personal",
     cipher="CCMP",
 )
@@ -60,7 +60,7 @@ def u16(short):
     return f"0000{short:04x}-0000-1000-8000-00805f9b34fb"
 
 
-# --- failure messages use PLAN.md's wording ------------------------------------------------
+# --- failure messages use docs/original-plan.md's wording -------------------------------------
 
 
 def test_failure_messages_match_plan_wording():
@@ -178,9 +178,9 @@ def test_scan_rounds_runs_three_rounds_of_ten_seconds():
 
 def test_flicker_is_filtered_out():
     rounds = [
-        [reading("cc:ba:bd:ac:94:d9", rssi=-40), reading("00:0c:6e:00:00:01", ssid="Flicker")],
-        [reading("cc:ba:bd:ac:94:d9", rssi=-44)],
-        [reading("cc:ba:bd:ac:94:d9", rssi=-42)],
+        [reading("cc:ba:bd:00:10:d9", rssi=-40), reading("00:0c:6e:00:00:01", ssid="Flicker")],
+        [reading("cc:ba:bd:00:10:d9", rssi=-44)],
+        [reading("cc:ba:bd:00:10:d9", rssi=-42)],
     ]
     [home] = aggregate_wifi(rounds, SALT)
     assert (home.ssid, home.sightings, home.rssi_dbm) == ("HomeNet", 3, -42)
@@ -190,7 +190,7 @@ def test_flicker_is_filtered_out():
 def test_a_cached_entry_that_never_refreshes_counts_once():
     # The WLAN API keeps returning a stale entry; its host timestamp never moves.
     stale = [reading("00:0c:6e:00:00:02", ssid="Gone", ts=111) for _ in range(3)]
-    fresh = [reading("cc:ba:bd:ac:94:d9", ts=t) for t in (1, 2, 3)]
+    fresh = [reading("cc:ba:bd:00:10:d9", ts=t) for t in (1, 2, 3)]
     aps = aggregate_wifi([[s, f] for s, f in zip(stale, fresh, strict=True)], SALT)
     assert [a.ssid for a in aps] == ["HomeNet"]
 
@@ -201,8 +201,8 @@ def test_randomised_bssid_has_no_maker():
 
 
 def test_refs_are_salted_hashes():
-    [a] = aggregate_wifi([[reading("cc:ba:bd:ac:94:d9")]] * 2, SALT)
-    [b] = aggregate_wifi([[reading("cc:ba:bd:ac:94:d9")]] * 2, b"other-salt")
+    [a] = aggregate_wifi([[reading("cc:ba:bd:00:10:d9")]] * 2, SALT)
+    [b] = aggregate_wifi([[reading("cc:ba:bd:00:10:d9")]] * 2, b"other-salt")
     assert a.ref.startswith("wifi:") and "ccbabd" not in a.ref
     assert a.ref != b.ref
 
@@ -213,9 +213,9 @@ def test_refs_are_salted_hashes():
 def test_netsh_networks_parse():
     readings = netsh.parse_networks(read("netsh_networks.txt"))
     assert [(r.bssid, r.ssid) for r in readings] == [
-        ("cc:ba:bd:ac:94:d9", "HomeNet"),
+        ("02:00:00:00:10:d9", "HomeNet"),
         ("9a:3b:4c:00:11:22", "HomeNet"),
-        ("cc:ba:bd:ac:94:da", None),
+        ("02:00:00:00:10:da", None),
         ("00:11:22:33:44:55", "Free: Cafe Wi-Fi"),
     ]
     home, home2, hidden, cafe = readings
@@ -343,7 +343,7 @@ def test_collect_wifi_falls_back_to_netsh(monkeypatch):
         raise WirelessError("wlanapi_unavailable")
 
     monkeypatch.setattr(wlanapi, "survey_rounds", unavailable)
-    monkeypatch.setattr(netsh, "survey_rounds", lambda: [[reading("cc:ba:bd:ac:94:d9")]])
+    monkeypatch.setattr(netsh, "survey_rounds", lambda: [[reading("cc:ba:bd:00:10:d9")]])
     assert survey.collect_wifi()[0] == "netsh"
 
 
@@ -360,7 +360,7 @@ def test_collect_wifi_does_not_fall_back_when_location_is_off(monkeypatch):
 
 HOME_ROUNDS = [
     [
-        reading("cc:ba:bd:ac:94:d9", rssi=-40, ts=t),
+        reading("cc:ba:bd:00:10:d9", rssi=-40, ts=t),
         reading("9a:3b:4c:00:11:22", rssi=-42, ts=t, sec=OPEN),
     ]
     for t in (1, 2, 3)
@@ -452,6 +452,22 @@ def test_unexpected_error_is_contained():
     assert survey_.ble_devices is not None
 
 
+def test_live_counts_as_each_part_finishes():
+    heard = []
+    collect_nearby(wifi_fn=wifi_ok, ble_fn=ble_ok, on_heard=lambda w, b: heard.append((w, b)))
+    assert heard[0][1] is None and heard[0][0] > 0  # Wi-Fi first, then both
+    assert heard[1][0] == heard[0][0] and heard[1][1] > 0
+
+
+def test_bluetooth_count_after_a_failed_wifi_survey_has_no_wifi_count():
+    # Not "heard 0 nearby networks": the Wi-Fi survey didn't run at all.
+    heard = []
+    collect_nearby(
+        wifi_fn=raises("location_off"), ble_fn=ble_ok, on_heard=lambda w, b: heard.append((w, b))
+    )
+    assert len(heard) == 1 and heard[0][0] is None and heard[0][1] > 0
+
+
 def test_netsh_fallback_cannot_check_wps():
     r = run_nearby_check(
         connected_fn=lambda: CONNECTED, wifi_fn=lambda: ("netsh", HOME_ROUNDS), ble_fn=ble_ok
@@ -477,7 +493,7 @@ def test_room_network_prefers_the_connection():
     room = room_network(CONNECTED, "HomeNet")
     assert (room.source, room.bssid, room.security.kind) == (
         "connected",
-        "cc:ba:bd:ac:94:d9",
+        "cc:ba:bd:00:10:d9",
         "wpa2",
     )
     assert room_network(CONNECTED, "OtherNet").source == "typed"
@@ -486,7 +502,7 @@ def test_room_network_prefers_the_connection():
 
 def test_first_connected_reads_the_bssid():
     s = first_connected((FIXTURES / "checks" / "netsh_wpa2.txt").read_text("utf-8"))
-    assert (s.ssid, s.bssid) == ("HomeNet", "cc:ba:bd:ac:94:d9")
+    assert (s.ssid, s.bssid) == ("HomeNet", "02:00:00:00:10:d9")
 
 
 # --- Apple proximity pairing (AirPods) ------------------------------------------------------

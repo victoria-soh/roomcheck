@@ -1,0 +1,30 @@
+/* Digits 0–9 from Plus Jakarta Sans, under the body family's own name. Atkinson Hyperlegible
+   Next's zero is slashed, which makes "10" read like "19" at small sizes. These faces cover
+   U+0030–0039 only and come after Atkinson's (main.tsx imports this file after it), so the
+   browser takes digits from here and every letter still from Atkinson. Weight-matched to the
+   body weights, bundled (the CSP allows fonts only from RoomCheck itself). The PDF does the
+   same (app/report/render.py REPORT_FONTS). */
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../../node_modules/@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-400-normal.woff2") format("woff2");
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("../../node_modules/@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-600-normal.woff2") format("woff2");
+  unicode-range: U+0030-0039;
+}
+@font-face {
+  font-family: "Atkinson Hyperlegible Next";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../../node_modules/@fontsource/plus-jakarta-sans/files/plus-jakarta-sans-latin-700-normal.woff2") format("woff2");
+  unicode-range: U+0030-0039;
+}

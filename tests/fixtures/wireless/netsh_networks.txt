@@ -6,7 +6,7 @@ SSID 1 : HomeNet
     Network type            : Infrastructure
     Authentication          : WPA2-Personal
     Encryption              : CCMP
-    BSSID 1                 : cc:ba:bd:ac:94:d9
+    BSSID 1                 : 02:00:00:00:10:d9
          Signal             : 92%
          Radio type         : 802.11ax
          Band               : 5 GHz
@@ -28,7 +28,7 @@ SSID 2 :
     Network type            : Infrastructure
     Authentication          : WPA2-Personal
     Encryption              : CCMP
-    BSSID 1                 : cc:ba:bd:ac:94:da
+    BSSID 1                 : 02:00:00:00:10:da
          Signal             : 70%
          Radio type         : 802.11ax
          Channel            : 6

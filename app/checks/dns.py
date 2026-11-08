@@ -4,8 +4,8 @@
     invents results, which is how some networks redirect or intercept traffic.
 (b) Well-known public names must not resolve to private, reserved or other non-public
     addresses.
-PLAN.md's DoH comparison is left out on purpose: it would add an outside call, and it was
-only ever context, never a trigger.
+docs/original-plan.md's DoH comparison is left out on purpose: it would add an outside call, and it
+was only ever context, never a trigger.
 """
 
 from __future__ import annotations

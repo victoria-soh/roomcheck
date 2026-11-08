@@ -26,15 +26,15 @@ WEP = make_security("wep")
 WPA1 = make_security("wpa", pairwise=["TKIP"])
 UNKNOWN = make_security("unknown")
 
-ROUTER = "cc:ba:bd:ac:94:d9"  # TP-Link Systems Inc.
-ROUTER_5G = "cc:ba:bd:ac:94:da"
+ROUTER = "cc:ba:bd:00:10:d9"  # TP-Link Systems Inc.
+ROUTER_5G = "cc:ba:bd:00:10:da"
 MESH_NODE = "00:14:78:10:20:30"  # TP-LINK TECHNOLOGIES CO.,LTD.: same company, other registration
 ASUS = "00:0c:6e:aa:bb:cc"
 EERO_1 = "00:ab:48:01:02:03"
 EERO_2 = "08:9b:f1:01:02:03"
 HIKVISION = "00:bc:99:aa:bb:cc"
 PHONE_HOTSPOT = "9a:3b:4c:00:11:22"  # locally administered: randomised
-MESH_EXTRA = "da:ba:bd:ac:94:db"  # randomised extra network from a mesh node
+MESH_EXTRA = "da:ba:bd:00:53:db"  # randomised extra network from a mesh node
 
 CONNECTED = RoomNetwork(ssid="HomeNet", bssid=ROUTER, security=WPA2, source="connected")
 TYPED = RoomNetwork(ssid="HomeNet", source="typed")
@@ -209,7 +209,8 @@ def test_camera_named_hotspot_is_medium_possible():
     f = one(findings, "R-CAMHOT")
     assert (f.severity, f.confidence_band, f.nearby_ref) == ("Medium", "Possible", cam.ref)
     assert 'The network name "IPCAM-7F3A21" matches the name mentions a camera' in f.evidence
-    assert "Names and makers are hints, not proof" in f.evidence
+    # "Unconfirmed" is said once on the page, not on each card.
+    assert not [e for e in f.evidence if "not proof" in e]
     assert "Use the locator" in f.next_step
 
 
@@ -273,7 +274,7 @@ def test_strong_hidden_network_is_low():
     hidden = ap(MESH_EXTRA, ssid=None, rssi=-48)
     f = one(judge([ap(ROUTER), hidden])[0], "R-HIDDEN")
     assert (f.severity, f.nearby_ref) == ("Low", hidden.ref)
-    assert "Shown as context, not proof" in f.next_step
+    assert "Shown as context, and unconfirmed" in f.next_step
 
 
 @pytest.mark.parametrize("rssi", [-60, -75])
@@ -318,7 +319,8 @@ def test_wps_on_the_room_network_is_medium():
     )
     assert "It lists PIN entry among its setup methods" in f.evidence
     assert any("locked for now" in e for e in f.evidence)
-    assert f.next_step == "Ask the landlord to switch WPS off (it is open to PIN brute-forcing)."
+    # The PIN risk is in why_it_matters only, not repeated in the next step (B4).
+    assert f.next_step == "Ask the host whether WPS can be switched off."
 
 
 def test_wps_on_a_neighbours_network_or_a_weaker_copy_is_not_r_wps():
@@ -358,10 +360,14 @@ def test_tracker_away_from_owner_in_repeated_scans_is_flagged():
     )
     f = one(findings, "R-TRACKER")
     assert (f.severity, f.confidence_band) == ("Medium", "Likely")
-    assert f.title == "Possible item tracker that isn't yours"
+    assert f.title == "Item tracker nearby"
     assert "Heard with a strong signal in 3 of 3 scans (strongest -55 dBm)" in f.evidence
     assert any("AirGuard" in e for e in f.evidence)
-    assert f.next_step.startswith("An item tracker is nearby and doesn't seem to belong to you.")
+    assert f.next_step == (
+        "If it isn't yours, find it with the locator; a phone's built-in "
+        "unknown-tracker alert gives a second opinion."
+    )
+    assert f.standard_why == "A tracker you don't recognise could be used to follow where you go."
 
 
 def test_one_sighting_is_not_enough():
@@ -522,21 +528,23 @@ def test_randomised_wpa3_nodes_do_not_count_as_proof_of_wpa3():
 
 @pytest.mark.parametrize("room", ["connected", "typed"])
 def test_live_mesh_from_run_1_stays_silent(room):
-    """The 8 "mymummy" access points heard on 2 Nov (addresses made up, makers kept)."""
+    """The 8 "Example-Home" access points heard on 2 Nov (addresses made up, makers kept)."""
     live = [
-        ap("00:31:92:00:00:01", ssid="mymummy", sec=MIXED, rssi=-80),
-        ap("cc:ba:bd:00:00:02", ssid="mymummy", sec=MIXED, rssi=-66),
-        ap("da:31:92:00:00:03", ssid="mymummy", sec=WPA3, rssi=-85, mhz=6115),
-        ap("de:31:92:00:00:04", ssid="mymummy", sec=WPA3, rssi=-86, mhz=6115),
-        ap("00:31:92:00:00:05", ssid="mymummy", sec=MIXED, rssi=-41),
-        ap("cc:ba:bd:00:00:06", ssid="mymummy", sec=MIXED, rssi=-73),
-        ap("00:31:92:00:00:07", ssid="mymummy", sec=MIXED, rssi=-32),
-        ap("cc:ba:bd:00:00:08", ssid="mymummy", sec=MIXED, rssi=-86),
+        ap("00:31:92:00:00:01", ssid="Example-Home", sec=MIXED, rssi=-80),
+        ap("cc:ba:bd:00:00:02", ssid="Example-Home", sec=MIXED, rssi=-66),
+        ap("da:31:92:00:00:03", ssid="Example-Home", sec=WPA3, rssi=-85, mhz=6115),
+        ap("de:31:92:00:00:04", ssid="Example-Home", sec=WPA3, rssi=-86, mhz=6115),
+        ap("00:31:92:00:00:05", ssid="Example-Home", sec=MIXED, rssi=-41),
+        ap("cc:ba:bd:00:00:06", ssid="Example-Home", sec=MIXED, rssi=-73),
+        ap("00:31:92:00:00:07", ssid="Example-Home", sec=MIXED, rssi=-32),
+        ap("cc:ba:bd:00:00:08", ssid="Example-Home", sec=MIXED, rssi=-86),
     ]
     rn = (
-        RoomNetwork(ssid="mymummy", bssid="00:31:92:00:00:07", security=WPA2, source="connected")
+        RoomNetwork(
+            ssid="Example-Home", bssid="00:31:92:00:00:07", security=WPA2, source="connected"
+        )
         if room == "connected"
-        else RoomNetwork(ssid="mymummy", source="typed")
+        else RoomNetwork(ssid="Example-Home", source="typed")
     )
     findings, _ = judge(live, room=rn)
     assert not {"R-TWIN", "R-TWIN-VENDOR", "R-TWIN-DOWNGRADE"} & set(ids(findings))

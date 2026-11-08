@@ -66,7 +66,7 @@ def _run_port_check(
 ) -> tuple[CheckStatus, dict[str, tuple[list[int], bool]] | None]:
     try:
         if scanner is None:
-            raise ScannerError("scanner_unavailable")
+            raise ScannerError("scanner_not_started")
         raw = scanner.run("port_scan", {}, PORT_SCAN_TIMEOUT_SECONDS) or []
     except ScannerError as e:
         status = "skipped" if e.code == "nmap_missing" else "failed"

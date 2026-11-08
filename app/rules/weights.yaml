@@ -1,7 +1,16 @@
 # Layer 2 device-type weights. Confidence per type is noisy-OR over the matching signals:
 #   P(type) = 1 - prod(1 - w_i)
-# Camera weights are the starting values from PLAN.md; the rest are first guesses.
-# Tune them against your own test devices (see PLAN.md, Testing), never in code.
+# Camera weights are the starting values from docs/original-plan.md; the rest are first guesses.
+# Tune them against your own test devices (see docs/original-plan.md, Testing), never in code.
+#
+# Each signal has `evidence` (the technical detail, under "Why we think this") and `clue`: one
+# fixed plain sentence for "What we observed", true whenever the signal matches. "{detail}" in a
+# clue is the value that matched: a name the device gave itself, or the open ports. Clues never
+# say more than the signal shows.
+#
+# plain_rank: how easily a renter understands the clue, 1 the plainest (a live video stream),
+# then a name the device gave itself (2), its maker (3), discovery protocols (4) and ports or
+# chips (5). It only picks the summary sentence's clue; it never changes a score.
 #
 # `when` keys (all given keys must match):
 #   name_regex       hostnames, mDNS instance and model strings, UPnP model, web page title
@@ -33,38 +42,56 @@ types:
         weight: 0.6
         when: {onvif_type: NetworkVideoTransmitter}
         evidence: Answered a camera discovery request (ONVIF video transmitter)
+        clue: "It answers camera discovery requests (ONVIF)."
+        plain_rank: 4
       - id: rtsp_server
         weight: 0.5
         when: {rtsp: true}
         evidence: Runs a video-streaming server (RTSP)
+        clue: "It offers a live video stream, the kind security cameras use."
+        plain_rank: 1
       - id: camera_ports
         weight: 0.3
         when: {ports_any: [34567, 37777, 8000]}
         evidence: Has a port open that camera recorders often use
+        clue: "It has a port open that camera recorders often use ({detail})."
+        plain_rank: 5
       - id: camera_vendor
         weight: 0.3
         when: {vendor_regex: "hikvision|dahua|xiongmai|uniview|reolink|amcrest|foscam|wyze|ezviz|imou|axis communications|hanwha"}
         evidence: Made by a company known for cameras
+        clue: "Its maker mostly sells cameras."
+        plain_rank: 3
       - id: camera_name
         weight: 0.3
         when: {name_regex: "(?:^|[^a-z])(?:ip)?cam(?:era)?(?:[^a-z]|$)|webcam|(?:^|[^a-z])ipc(?:[^a-z]|$)|(?:^|[^a-z])[nd]vr(?:[^a-z]|$)|doorbell"}
         evidence: Its name or model mentions a camera
+        clue: "It calls itself “{detail}”."
+        plain_rank: 2
       - id: homekit_camera
         weight: 0.6
         when: {hap_category_any: [17, 18]}
         evidence: Says it is a HomeKit camera
+        clue: "It says it is a HomeKit camera."
+        plain_rank: 2
       - id: multi_type_vendor
         weight: 0.1
         when: {vendor_regex: "tp-link"}
         evidence: Made by a company that makes many kinds of device, including cameras
+        clue: "Its maker makes many kinds of device, including cameras."
+        plain_rank: 4
       - id: chip_vendor
         weight: 0.1
         when: {vendor_regex: "espressif"}
         evidence: Uses a Wi-Fi chip from a company whose chips go into many kinds of device, including cameras
+        clue: "Its Wi-Fi chip is used in many kinds of device, including cameras."
+        plain_rank: 5
       - id: tuya_broadcast
         weight: 0.05
         when: {tuya: true}
         evidence: Sends Tuya smart-home broadcasts (some Tuya devices are cameras)
+        clue: "It sends Tuya smart-home broadcasts, which some cameras send."
+        plain_rank: 5
 
   lock_doorbell:
     label: Smart lock or doorbell
@@ -73,14 +100,20 @@ types:
         weight: 0.6
         when: {hap_category_any: [6, 18]}
         evidence: Says it is a HomeKit lock or doorbell
+        clue: "It says it is a HomeKit lock or doorbell."
+        plain_rank: 2
       - id: lock_vendor
         weight: 0.5
         when: {vendor_regex: "nuki|yale|assa abloy|august home|igloohome|schlage|kwikset|ring llc|level home|ultraloq|u-tec"}
         evidence: Made by a company known for smart locks or doorbells
+        clue: "Its maker is known for smart locks or doorbells."
+        plain_rank: 3
       - id: lock_name
         weight: 0.5
         when: {name_regex: "lock|doorbell|nuki|yale|igloo|ring-|ultraloq"}
         evidence: Its name or model mentions a lock or doorbell
+        clue: "It calls itself “{detail}”."
+        plain_rank: 2
 
   router:
     label: Router or Wi-Fi access point
@@ -89,18 +122,26 @@ types:
         weight: 0.6
         when: {gateway: true}
         evidence: It is this network's gateway (where traffic leaves the network)
+        clue: "It is this network's router: traffic leaves the network through it."
+        plain_rank: 1
       - id: upnp_igd
         weight: 0.5
         when: {ssdp_regex: "InternetGatewayDevice|WANIPConnection|WANPPPConnection"}
         evidence: Offers internet gateway controls (UPnP)
+        clue: "It offers controls that let devices open internet ports (UPnP)."
+        plain_rank: 4
       - id: router_vendor
         weight: 0.3
         when: {vendor_regex: "netgear|asustek|linksys|ubiquiti|mikrotik|eero|sagemcom|technicolor|arcadyan|sercomm|avm gmbh|zyxel|d-link|tenda|huawei|zte|tp-link"}
         evidence: Made by a company that makes routers
+        clue: "Its maker makes routers."
+        plain_rank: 3
       - id: router_name
         weight: 0.3
         when: {name_regex: "router|gateway|deco|orbi|eero|mesh|access ?point|archer"}
         evidence: Its name or model mentions a router
+        clue: "It calls itself “{detail}”."
+        plain_rank: 2
 
   hub:
     label: Smart-home hub
@@ -109,22 +150,32 @@ types:
         weight: 0.6
         when: {mdns_type_any: [_hue._tcp]}
         evidence: Advertises itself as a Philips Hue bridge
+        clue: "It says it is a Philips Hue bridge."
+        plain_rank: 2
       - id: homekit_bridge
         weight: 0.6
         when: {hap_category_any: [2]}
         evidence: Says it is a HomeKit bridge
+        clue: "It says it is a HomeKit bridge."
+        plain_rank: 2
       - id: hub_vendor
         weight: 0.4
         when: {vendor_regex: "signify|philips lighting|smartthings|samjin|lumi united|aqara|athom|hubitat|homey"}
         evidence: Made by a company that makes smart-home hubs
+        clue: "Its maker makes smart-home hubs."
+        plain_rank: 3
       - id: hub_name
         weight: 0.4
         when: {name_regex: "hub|bridge|smartthings|homey|zigbee|home ?assistant"}
         evidence: Its name or model mentions a hub
+        clue: "It calls itself “{detail}”."
+        plain_rank: 2
       - id: mqtt
         weight: 0.2
         when: {ports_any: [1883, 8883]}
         evidence: Runs a smart-home messaging service (MQTT)
+        clue: "It runs a smart-home messaging service (MQTT)."
+        plain_rank: 5
 
   speaker:
     label: Smart speaker
@@ -133,26 +184,38 @@ types:
         weight: 0.6
         when: {mdns_type_any: [_sonos._tcp]}
         evidence: Advertises itself as a Sonos speaker
+        clue: "It says it is a Sonos speaker."
+        plain_rank: 2
       - id: homekit_speaker
         weight: 0.5
         when: {hap_category_any: [26]}
         evidence: Says it is a HomeKit speaker
+        clue: "It says it is a HomeKit speaker."
+        plain_rank: 2
       - id: speaker_vendor
         weight: 0.4
         when: {vendor_regex: "sonos|bose|harman|bang & olufsen|sound united|denon|bluesound|libratone"}
         evidence: Made by a company that makes speakers
+        clue: "Its maker makes speakers."
+        plain_rank: 3
       - id: speaker_name
         weight: 0.4
         when: {name_regex: "sonos|speaker|homepod|echo|nest ?(?:mini|audio)|soundbar|audioaccessory"}
         evidence: Its name or model mentions a speaker
+        clue: "It calls itself “{detail}”."
+        plain_rank: 2
       - id: spotify_connect
         weight: 0.3
         when: {mdns_type_any: [_spotify-connect._tcp]}
         evidence: Can play Spotify music sent from a phone
+        clue: "It can play music sent from a phone (Spotify)."
+        plain_rank: 1
       - id: airplay_audio
         weight: 0.2
         when: {mdns_type_any: [_raop._tcp]}
         evidence: Can receive AirPlay audio
+        clue: "It can play audio sent from a phone (AirPlay)."
+        plain_rank: 1
 
   tv:
     label: TV or streaming stick
@@ -161,30 +224,44 @@ types:
         weight: 0.6
         when: {mdns_type_any: [_androidtvremote2._tcp, _androidtvremote._tcp]}
         evidence: Accepts Android TV remote control
+        clue: "It accepts Android TV remote control."
+        plain_rank: 2
       - id: homekit_tv
         weight: 0.5
         when: {hap_category_any: [31]}
         evidence: Says it is a HomeKit TV
+        clue: "It says it is a HomeKit TV."
+        plain_rank: 2
       - id: dial
         weight: 0.4
         when: {ssdp_regex: "dial-multiscreen"}
         evidence: Can launch apps sent from a phone (DIAL)
+        clue: "It can launch apps sent from a phone (DIAL)."
+        plain_rank: 4
       - id: tv_name
         weight: 0.4
         when: {name_regex: "(?:^|[^a-z])tv(?:[^a-z]|$)|bravia|roku|chromecast|fire ?tv|apple ?tv|webos|tizen|appletv"}
         evidence: Its name or model mentions a TV
+        clue: "It calls itself “{detail}”."
+        plain_rank: 2
       - id: tv_vendor
         weight: 0.3
         when: {vendor_regex: "lg electronics|sony|tcl|hisense|roku|vizio|sharp|philips|panasonic"}
         evidence: Made by a company that makes TVs
+        clue: "Its maker makes TVs."
+        plain_rank: 3
       - id: googlecast
         weight: 0.3
         when: {mdns_type_any: [_googlecast._tcp]}
         evidence: Can play video sent from a phone (Google Cast)
+        clue: "It can play video sent from a phone (Google Cast)."
+        plain_rank: 1
       - id: media_renderer
         weight: 0.2
         when: {ssdp_regex: "MediaRenderer"}
         evidence: Can play media sent from other devices (UPnP)
+        clue: "It can play media sent from other devices (UPnP)."
+        plain_rank: 4
 
   smart_plug:
     label: Smart plug or switch
@@ -193,22 +270,32 @@ types:
         weight: 0.6
         when: {hap_category_any: [7, 8]}
         evidence: Says it is a HomeKit outlet or switch
+        clue: "It says it is a HomeKit outlet or switch."
+        plain_rank: 2
       - id: plug_name
         weight: 0.5
         when: {name_regex: "plug|socket|outlet|kasa|tapo|shelly|meross|wemo|sonoff|switch"}
         evidence: Its name or model mentions a plug or switch
+        clue: "It calls itself “{detail}”."
+        plain_rank: 2
       - id: tuya_plug
         weight: 0.3
         when: {tuya: true}
         evidence: Sends Tuya smart-home broadcasts (common in smart plugs)
+        clue: "It sends Tuya smart-home broadcasts, which smart plugs often send."
+        plain_rank: 4
       - id: tuya_local
         weight: 0.3
         when: {ports_any: [6668]}
         evidence: Has the Tuya local-control port open
+        clue: "It has the Tuya local-control port open."
+        plain_rank: 5
       - id: espressif
         weight: 0.2
         when: {vendor_regex: "espressif"}
         evidence: Uses a Wi-Fi chip common in smart plugs
+        clue: "Its Wi-Fi chip is common in smart plugs."
+        plain_rank: 4
 
   computer_phone:
     label: Computer or phone
@@ -217,27 +304,41 @@ types:
         weight: 0.4
         when: {random_mac: true}
         evidence: Uses a private address, which phones and laptops do by default
+        clue: "It uses a private address, as phones and laptops do by default."
+        plain_rank: 3
       - id: computer_name
         weight: 0.5
         when: {name_regex: "macbook|imac|mac ?mini|iphone|ipad|android|galaxy|pixel|laptop|desktop|thinkpad|surface|(?:^|[^a-z])pc(?:[^a-z]|$)"}
         evidence: Its name mentions a computer or phone
+        clue: "It calls itself “{detail}”."
+        plain_rank: 2
       - id: screen_sharing
         weight: 0.4
         when: {mdns_type_any: [_rfb._tcp]}
         evidence: Offers screen sharing
+        clue: "It offers screen sharing."
+        plain_rank: 1
       - id: file_sharing
         weight: 0.4
         when: {mdns_type_any: [_smb._tcp, _afpovertcp._tcp, _sftp-ssh._tcp]}
         evidence: Offers file sharing
+        clue: "It offers file sharing."
+        plain_rank: 1
       - id: apple_companion
         weight: 0.3
         when: {mdns_type_any: [_companion-link._tcp]}
         evidence: Advertises Apple device-to-device features
+        clue: "It advertises Apple device-to-device features."
+        plain_rank: 4
       - id: dhcp_os
         weight: 0.4
         when: {dhcp_vendor_regex: "msft|android-dhcp"}
         evidence: Asked for an address the way Windows or Android does
+        clue: "It asked for an address the way Windows or Android does."
+        plain_rank: 4
       - id: computer_vendor
         weight: 0.3
         when: {vendor_regex: "intel corporate|dell|lenovo|hewlett packard|microsoft|liteon|azurewave|hon hai|apple"}
         evidence: Made by a company that makes computers or phones
+        clue: "Its maker makes computers or phones."
+        plain_rank: 3

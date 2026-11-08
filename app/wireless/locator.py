@@ -4,8 +4,8 @@ The user walks slowly round the room holding the laptop; each new reading is smo
 rolling median of the last 5 and compared with a few readings earlier. Locating devices from
 signal strength as the user walks follows Lumos (Sharma et al., USENIX Security 2022).
 
-Safeguards (PLAN.md): it only accepts refs from the latest nearby check's flagged items,
-shows signal strength only, never stores locations and keeps no history: the readings live in
+Safeguards (docs/original-plan.md): it only accepts refs from the latest nearby check's flagged
+items, shows signal strength only, never stores locations and keeps no history: the readings live in
 this object and are gone when the session ends.
 """
 

@@ -144,7 +144,8 @@ def test_missing_scanner_fails_only_scanner_jobs():
     assert by_name["arp_sweep"].active and by_name["arp_sweep"].sweep
     status, _ = _run_one(by_name["arp_sweep"], NET)
     assert status.status == "failed"
-    assert status.reason == message_for("scanner_unavailable")
+    # No worker at all: it never started, so the admin advice applies (B6).
+    assert status.reason == message_for("scanner_not_started")
 
 
 class RecordingScanner:
@@ -165,7 +166,7 @@ def test_scanner_jobs_send_only_fixed_parameters():
     cols["arp_sweep"].run(NET)
     found = cols["passive_listen"].run(NET)
     assert scanner.calls == [
-        ("arp_sweep", {"gap_seconds": 20.0}),
+        ("arp_sweep", {"gap_seconds": 20.0, "budget_seconds": 60.0}),
         ("passive_listen", {"duration_seconds": 60}),
     ]
     assert found[0].mac == "00:00:00:00:00:01"

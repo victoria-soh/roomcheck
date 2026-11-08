@@ -151,6 +151,10 @@ class NearbyItem(BaseModel):
     band: str | None = None
     signal_dbm: int
     rule_ids: list[str]
+    connected: bool = False  # Wi-Fi only: the access point the laptop is connected to
+    # Layer 6: a salted hash of the BSSID or address with the baseline's fixed salt, so a later
+    # scan can be compared with the move-in scan. Not an address.
+    match_key: str | None = None
 
 
 class HeardCounts(BaseModel):

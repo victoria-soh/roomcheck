@@ -31,15 +31,15 @@ def camera_l1():
         Service(
             kind="ssdp",
             name="upnp:rootdevice",
-            detail={"location": "http://192.168.68.64/desc.xml"},
+            detail={"location": "http://192.0.2.64/desc.xml"},
         )
     )
     return d
 
 
 PORTS = [
-    {"ip": "192.168.68.64", "open_ports": [80, 554, 8000], "complete": True},
-    {"ip": "192.168.68.53", "open_ports": [], "complete": True},
+    {"ip": "192.0.2.64", "open_ports": [80, 554, 8000], "complete": True},
+    {"ip": "192.0.2.53", "open_ports": [], "complete": True},
 ]
 
 
@@ -93,10 +93,10 @@ def test_consented_scan_identifies_camera():
     )
     assert scanner.calls == [("port_scan", {})]
     assert sorted(calls) == [
-        ("http", "192.168.68.64", 80),
-        ("http", "192.168.68.64", 8000),
-        ("rtsp", "192.168.68.64", 554),
-        ("upnp", "192.168.68.64", "http://192.168.68.64/desc.xml"),
+        ("http", "192.0.2.64", 80),
+        ("http", "192.0.2.64", 8000),
+        ("rtsp", "192.0.2.64", 554),
+        ("upnp", "192.0.2.64", "http://192.0.2.64/desc.xml"),
     ]
     cam, speaker = devices
     assert cam.identity.open_ports == [80, 554, 8000]
@@ -169,7 +169,7 @@ def test_device_timeout_and_junk_mean_partly_identified():
 
 
 def test_port_check_incomplete_host_is_partial():
-    results = [{"ip": "192.168.68.53", "open_ports": [], "complete": False}]
+    results = [{"ip": "192.0.2.53", "open_ports": [], "complete": False}]
     devices = [bare(dev.sonos())]
     _, messages = fingerprint_devices(
         devices, consent=True, scanner=FakeScanner(results), probe_fns=ok_probes()
@@ -182,9 +182,7 @@ def test_upnp_location_on_another_host_is_never_fetched():
     calls = []
     d = bare(dev.sonos())
     d.services.append(
-        Service(
-            kind="ssdp", name="upnp:rootdevice", detail={"location": "http://192.168.68.1/x.xml"}
-        )
+        Service(kind="ssdp", name="upnp:rootdevice", detail={"location": "http://192.0.2.1/x.xml"})
     )
     fingerprint_devices([d], consent=True, scanner=FakeScanner(PORTS), probe_fns=ok_probes(calls))
     assert calls == []
@@ -198,7 +196,7 @@ def test_tls_mismatch_is_a_note_not_a_problem():
 
     base = ok_probes()
     devices = [camera_l1()]
-    results = [{"ip": "192.168.68.64", "open_ports": [443, 554], "complete": True}]
+    results = [{"ip": "192.0.2.64", "open_ports": [443, 554], "complete": True}]
     _, messages = fingerprint_devices(
         devices,
         consent=True,

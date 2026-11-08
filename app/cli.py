@@ -1,8 +1,10 @@
 """Command-line check for development.
 
-    python -m app.cli discover [--consent]   full check, including the nearby check
-    python -m app.cli nearby                 nearby Wi-Fi and Bluetooth only
-    python -m app.cli locate                 nearby check, then warmer/colder for one item
+python -m app.cli discover [--consent]   full check, including the nearby check
+python -m app.cli nearby                 nearby Wi-Fi and Bluetooth only
+python -m app.cli locate                 nearby check, then warmer/colder for one item
+python -m app.cli report [--consent]     full check, explanations and a timestamped PDF
+python -m app.cli verify REPORT.pdf      recompute the hash and check the timestamp
 """
 
 from __future__ import annotations
@@ -11,10 +13,19 @@ import argparse
 import asyncio
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
+from app.baseline.store import BaselineStore, DpapiProtector, default_store_path
+from app.config import get_settings
 from app.discovery.messages import message_for
 from app.discovery.models import CheckStatus, Device, DiscoveryResult
 from app.discovery.runner import DEFAULT_DURATION_SECONDS
+from app.explain import ai
+from app.explain.models import Explanations
+from app.explain.service import explain
+from app.handover.session import HandoverSession
+from app.questions import text
+from app.report import render, tamper
 from app.rules.models import Finding, RoomSummary
 from app.scan import run_scan
 from app.scanner import ScannerError, ScannerProcess
@@ -22,6 +33,11 @@ from app.wireless.locator import LocatorTarget, bar, locate, source_for
 from app.wireless.models import HeardCounts, NearbyItem
 from app.wireless.survey import NearbyResult, run_nearby_check
 from app.wireless.wlanapi import WirelessError
+
+
+def urgency(severity: str) -> str:
+    """The plain word for a priority, as on the dashboard and in the report."""
+    return text(f"results.severity.{severity}")
 
 
 def _print_device(d: Device, details: bool) -> None:
@@ -61,7 +77,7 @@ def _print_summary(s: RoomSummary | None, findings: Sequence[Finding]) -> None:
     print(f"{icon} {s.status}  ({s.high} high, {s.medium} medium, {s.other} other)")
     for f in findings:
         print()
-        print(f"  {f.severity.upper()} - {f.title}  [{f.rule_id}, {f.confidence_band}]")
+        print(f"  {urgency(f.severity)} - {f.title}  [{f.rule_id}, {f.confidence_band}]")
         for e in f.evidence:
             print(f"      - {e}")
         print(f"    Next step: {f.next_step}")
@@ -86,9 +102,7 @@ def _print_checks(checks: Sequence[CheckStatus]) -> None:
         print(f"  {c.status:7} {c.label}{extra}{reason}")
 
 
-def _print_nearby(
-    items: Sequence[NearbyItem], heard: HeardCounts | None, room: str | None
-) -> None:
+def _print_nearby(items: Sequence[NearbyItem], heard: HeardCounts | None, room: str | None) -> None:
     if heard is None:
         return
     compared = f'"{room}"' if room else "unknown"
@@ -161,6 +175,23 @@ def main(argv: list[str] | None = None) -> int:
     loc = sub.add_parser("locate", help="find a flagged nearby item: warmer or colder")
     loc.add_argument("--room-network", help=room_help)
     loc.add_argument("--item", type=int, help="number of the flagged item to find")
+
+    rep = sub.add_parser("report", help="full check, then a timestamped PDF handover report")
+    rep.add_argument("--consent", action="store_true", help="as for discover: allow active probes")
+    rep.add_argument("--duration", type=int, default=DEFAULT_DURATION_SECONDS)
+    rep.add_argument("--room-label", help="optional label for the report, e.g. 'Room 4B'")
+    rep.add_argument("--room-network", help=room_help)
+    rep.add_argument("--no-nearby", action="store_true", help="skip nearby Wi-Fi and Bluetooth")
+    rep.add_argument("--no-ai", action="store_true", help="use the standard explanations only")
+    rep.add_argument(
+        "--offline", action="store_true", help="no outside calls at all: no NVD, AI or timestamp"
+    )
+    rep.add_argument("--out", type=Path, help="folder for the report files")
+
+    ver = sub.add_parser("verify", help="check a report's hash and timestamp")
+    ver.add_argument("pdf", type=Path)
+    ver.add_argument("--tsr", type=Path, help="timestamp token (default: next to the PDF)")
+    ver.add_argument("--sha256", type=Path, help="hash file (default: next to the PDF)")
     args = parser.parse_args(argv)
 
     if args.command == "nearby":
@@ -172,6 +203,12 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if args.command == "locate":
         return _locate_command(args.room_network, args.item)
+    if args.command == "verify":
+        return _verify_command(args.pdf, args.tsr, args.sha256)
+    if args.command == "report" and not 10 <= args.duration <= 120:
+        parser.error("--duration must be between 10 and 120 seconds")
+    if args.command == "report":
+        return _report_command(args)
 
     if not 10 <= args.duration <= 120:
         parser.error("--duration must be between 10 and 120 seconds")
@@ -245,6 +282,105 @@ def _locate_command(room: str | None, choice: int | None) -> int:
         print(f"\n{message_for(e.code)}")
         return 1
     return 0
+
+
+def print_explanations(result: DiscoveryResult, explanations: Explanations) -> None:
+    reason = f" - {explanations.ai_reason_text}" if explanations.ai_reason_text else ""
+    print(f"\nExplanations (AI: {explanations.ai_status}{reason}):")
+    for rule_id, check in explanations.ai_rejected.items():
+        print(f"  ! AI text for {rule_id} rejected by the {check!r} check")
+    for f in result.findings:
+        e = explanations.for_finding(f.id)
+        if e is None:
+            continue
+        print(f"\n  {urgency(f.severity)} - {f.title}  [{f.rule_id}]")
+        print(f"    {e.explanation}")
+        print(f"    Why it matters: {e.why_it_matters}")
+        print(f"    ({e.label})")
+    m = explanations.landlord_message
+    print("\nMessage to the host (draft):")
+    if m is None:
+        print("  No open findings to ask about.")
+    else:
+        for line in m.text.splitlines():
+            print(f"  {line}")
+        print(f"  ({m.label} {m.note})")
+
+
+def _report_command(args: argparse.Namespace) -> int:
+    online = not args.offline
+    if online and not args.no_ai:
+        ai.start_warm_up(get_settings())  # warms during the scan; failure is logged, not raised
+    proc = ScannerProcess()
+    try:
+        scanner = proc.start()
+    except ScannerError:
+        scanner = None
+    try:
+        result = run_scan(
+            args.consent,
+            scanner,
+            args.duration,
+            online=online,
+            include_nearby=not args.no_nearby,
+            typed_room=args.room_network,
+        )
+    finally:
+        proc.stop()
+    result.explanations = explain(
+        result.findings, result.devices, result.nearby_items, online=online and not args.no_ai
+    )
+    # The handover data saved on this laptop (tasks, statuses, answers, the physical check), so
+    # the report asks the host about exactly the open tasks it lists, as from the dashboard.
+    session = HandoverSession(BaselineStore(default_store_path(), DpapiProtector()))
+    handover = session.state_for(result)
+    comparison = session.comparison(result) if session.saved else None
+    compare_state = "ready" if comparison else session.info().state
+    print_result(result)
+    print_explanations(result, result.explanations)
+    try:
+        report = render.make_report(
+            result,
+            result.explanations,
+            room_label=args.room_label,
+            out_dir=args.out,
+            online=online,
+            tsa_url=get_settings().tsa_url,
+            handover=handover,
+            compare_state=compare_state,
+            comparison=comparison,
+        )
+    except render.PdfUnavailable:
+        print(f"\n! {message_for('pdf_unavailable')}")
+        return 1
+    files = report.files
+    print(f"\nReport: {files.pdf}")
+    print(f"SHA-256: {files.sha256}  (saved in {files.sha256_file.name})")
+    if files.tsr is not None and files.timestamped_at is not None:
+        print(
+            f"Timestamp: {files.timestamped_at:%d %b %Y, %H:%M:%S} UTC  (saved in {files.tsr.name})"
+        )
+    else:
+        print(f"! {files.timestamp_message}")
+    return 0
+
+
+def _verify_command(pdf: Path, tsr: Path | None, sha: Path | None) -> int:
+    if not pdf.is_file():
+        print(f"No such file: {pdf}")
+        return 2
+    tsr = tsr or pdf.with_suffix(".tsr")
+    sha = sha or pdf.with_suffix(".sha256")
+    expected = tamper.read_hash_file(sha.read_text("ascii", "replace")) if sha.is_file() else None
+    result = tamper.verify(pdf.read_bytes(), tsr.read_bytes() if tsr.is_file() else None, expected)
+    print(f"SHA-256:   {result.sha256}")
+    print(f"Hash file: {result.hash_file}")
+    print(
+        f"Timestamp: {result.token}"
+        + (f" ({result.timestamped_at:%d %b %Y, %H:%M:%S} UTC)" if result.timestamped_at else "")
+    )
+    print(f"\n{'OK' if result.ok else 'NOT VERIFIED'}: {result.message}")
+    return 0 if result.ok else 1
 
 
 if __name__ == "__main__":

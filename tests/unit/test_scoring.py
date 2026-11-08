@@ -126,15 +126,15 @@ def test_gateway_is_router():
 
 
 def test_no_evidence_is_unidentified_and_unclear():
-    f = fp(dev.make("192.168.68.99", None), "passive")
+    f = fp(dev.make("192.168.1.99", None), "passive")
     assert (f.type, f.band, f.confidence, f.evidence) == ("unknown", "Unclear", 0.0, [])
     assert f.identification == "passive"
 
 
 def test_name_regex_avoids_obvious_false_matches():
-    d = dev.make("192.168.68.90", None, hostnames=["Cambridge-Audio.local", "camden-pc"])
+    d = dev.make("192.168.1.90", None, hostnames=["Cambridge-Audio.local", "camden-pc"])
     assert camera_score(fp(d)) == 0
-    d = dev.make("192.168.68.91", None, hostnames=["front-cam.local"])
+    d = dev.make("192.168.1.91", None, hostnames=["front-cam.local"])
     assert camera_score(fp(d)) == pytest.approx(0.3)
 
 
@@ -176,7 +176,7 @@ def test_vendor_wording_devices_versus_chips():
     )
     assert "chip" not in cam.evidence[0].text
 
-    esp = fp(dev.make("192.168.68.95", "00:4b:12:00:00:01"))  # Espressif Inc. prefix
+    esp = fp(dev.make("192.168.1.95", "00:4b:12:00:00:01"))  # Espressif Inc. prefix
     cam_esp = next(t for t in [esp, *esp.other_types, *esp.weak_types] if t.type == "camera")
     texts = [e.text for e in (cam_esp.evidence)]
     assert any(t.startswith("Uses a Wi-Fi chip from a company whose chips") for t in texts)

@@ -8,7 +8,7 @@ There is 1 interface on the system:
     Interface type         : Primary
     State                  : connected
     SSID                   : HomeNet
-    AP BSSID               : cc:ba:bd:ac:94:d9
+    AP BSSID               : 02:00:00:00:10:d9
     Band                   : 5 GHz
     Channel                : 44
     Network type           : Infrastructure

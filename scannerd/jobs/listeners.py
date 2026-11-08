@@ -18,6 +18,7 @@ from scapy.packet import Packet
 
 from app.discovery.models import Observation, Service
 from app.discovery.netinfo import NoNetworkError, default_route, get_network_info
+from scannerd import session
 from scannerd.jobs.arp import observation_from_arp
 from scannerd.protocol import JobError, require_pcap
 
@@ -153,4 +154,7 @@ def passive_listen(params: PassiveListenParams) -> list[dict[str, Any]]:
         store=False,
         timeout=params.duration_seconds,
     )
-    return [o.model_dump(mode="json") for o in log.observations()]
+    observations = log.observations()
+    # Port-check targets too (only once a consented sweep has run): see scannerd/session.py.
+    session.record_heard([o.ip for o in observations if o.ip])
+    return [o.model_dump(mode="json") for o in observations]

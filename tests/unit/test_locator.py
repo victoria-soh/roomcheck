@@ -2,6 +2,8 @@
 and Wi-Fi reading sources, and the API (nearby check, WebSocket stream, safeguards)."""
 
 import asyncio
+import json
+import time
 from datetime import UTC, datetime
 
 import pytest
@@ -297,3 +299,68 @@ def test_a_new_check_replaces_the_locatable_items(client, monkeypatch):
     client.post("/api/nearby", json={})
     with client.websocket_connect("/api/nearby/locate/bluetooth:abc") as ws:
         assert "error" in ws.receive_json()
+
+
+# --- the locator stops as soon as the page leaves (Part B: Stop, or leaving the screen) ------
+
+
+def _slow_source(log):
+    async def source():
+        try:
+            yield -70
+            await asyncio.sleep(30)  # e.g. waiting for the next Wi-Fi scan
+            yield -60
+        finally:
+            log.append("closed")
+
+    return source
+
+
+@pytest.mark.parametrize("how", ["close", "stop"])
+def test_locator_stops_at_once_when_the_page_closes_or_says_stop(monkeypatch, how):
+    """Through a real uvicorn server, as the browser would see it: the reading source is
+    closed straight away, not after the 30 s wait for its next reading."""
+    import socket
+    import threading
+
+    import uvicorn
+    from websockets.sync.client import connect
+
+    log = []
+    monkeypatch.setattr(main, "locator_source", lambda target: _slow_source(log)())
+    monkeypatch.setattr(
+        main.app.state,
+        "locator_targets",
+        {"bluetooth:abc": LocatorTarget(ref="bluetooth:abc", kind="bluetooth", label="Tracker")},
+        raising=False,
+    )
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+    server = uvicorn.Server(
+        uvicorn.Config(main.app, host="127.0.0.1", port=port, lifespan="off", log_level="error")
+    )
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    try:
+        assert wait_for(lambda: server.started)
+        start = time.monotonic()
+        with connect(f"ws://127.0.0.1:{port}/api/nearby/locate/bluetooth:abc") as ws:
+            assert json.loads(ws.recv(timeout=5))["raw_dbm"] == -70
+            if how == "stop":
+                ws.send("stop")
+                assert wait_for(lambda: log == ["closed"])
+        assert wait_for(lambda: log == ["closed"])
+        assert time.monotonic() - start < 5
+    finally:
+        server.should_exit = True
+        thread.join(5)
+
+
+def wait_for(condition, timeout=5.0):
+    end = time.monotonic() + timeout
+    while time.monotonic() < end:
+        if condition():
+            return True
+        time.sleep(0.01)
+    return False

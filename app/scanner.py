@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import os
 import secrets
 import subprocess
 import sys
@@ -30,6 +31,9 @@ class ScannerClient:
     def __init__(self, port: int, authkey: bytes) -> None:
         self.port = port
         self._authkey = authkey
+        # True once we stopped waiting for a job the worker may still be running. The worker
+        # carries on with it, so the next check restarts the worker first (app.main).
+        self.abandoned = False
 
     def run(self, job: str, params: dict[str, Any], timeout: float) -> Any:
         try:
@@ -39,6 +43,7 @@ class ScannerClient:
         with conn:
             conn.send_bytes(json.dumps({"job": job, "params": params}).encode())
             if not conn.poll(timeout):
+                self.abandoned = True
                 raise ScannerError("timeout")
             try:
                 reply = json.loads(conn.recv_bytes(maxlength=MAX_RESPONSE_BYTES))
@@ -81,6 +86,39 @@ class ScannerProcess:
         self._proc = proc
         self.client = ScannerClient(int(first.split()[1]), authkey)
         return self.client
+
+    def alive(self) -> bool:
+        """The worker process is running (it may still be busy)."""
+        return self._proc is not None and self._proc.poll() is None
+
+    def kill(self) -> None:
+        """Stop the worker at once, with any job it's running and that job's own children
+        (e.g. nmap). Its in-flight jobs then fail with scanner_unavailable."""
+        if self._proc is None:
+            return
+        if os.name == "nt":
+            # /T also ends the worker's child processes. Fixed argument list, no shell, and
+            # the full system path, so nothing earlier on PATH can stand in for taskkill.
+            system = Path(os.environ.get("SystemRoot", r"C:\Windows"))
+            taskkill = system / "System32" / "taskkill.exe"
+            subprocess.run(  # noqa: S603
+                [str(taskkill), "/PID", str(self._proc.pid), "/T", "/F"],
+                capture_output=True,
+                check=False,
+            )
+        else:
+            self._proc.kill()
+        try:
+            self._proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            self._proc.kill()
+        self._proc = None
+        self.client = None
+
+    def restart(self) -> ScannerClient:
+        """Kill the worker (cancelling its jobs) and start a fresh one with a new key."""
+        self.kill()
+        return self.start()
 
     def stop(self) -> None:
         if self._proc is None:
